@@ -17,11 +17,12 @@ var anim = {
     * Create a new instance of a class.
     * @method create
     * @param {String} cls
+    * @param {Object} [config]
     * @return an instance of the class specified
     */
-    create: function(cls){
+    create: function(cls, config){
         if(this.hasOwnProperty(cls)){
-            return new this[cls]();
+            return new this[cls](config);
         }
     },
 
@@ -38,23 +39,46 @@ var anim = {
         }
     },
 
+    rand: function(min, max) {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    },
+
     Actor: function(config){
 
+        var me = this;
+
+        // Create getters/setters for each attribute.
+        anim.eachOwn(config, function(prop, value){
+            me[prop] = value;
+        });
     }
 };
 
 
 anim.extend(anim.Actor.prototype, {
-    test: function(){
-        console.log('test');
+    draw: function(context){
+        context.fillStyle = this.fillStyle;
+        context.fillRect(this.x, this.y, this.width, this.height);
+        this.update(context);
     },
-    donkey: function(){
-        console.log('donkey');
+    update: function(context){
+        var canvas = context.canvas,
+            nextX = this.x + this.move.x,
+            nextY = this.y + this.move.y;
+
+        this.x = nextX;
+        this.y = nextY;
+
+        if(nextX + this.width > canvas.width || nextX < 0){
+            this.move.x *= -1;
+        }
+
+        if(nextY + this.height > canvas.height || nextY < 0){
+            this.move.y *= -1;
+        }
     }
 });
 
-
-var a = anim.create('Actor');
 
 
 $(function(){
@@ -71,32 +95,74 @@ $(function(){
         // draw each actor
         for(var i = 0, max = actors.length; i < max; i++){
             actor = actors[i];
-            context.fillStyle = (actor.fillStyle);
-            context.fillRect(actor.x, actor.y, actor.width, actor.height);
+            actor.draw(context);
         }
+
+        requestAnimationFrame(render);
     }
 
-    actors.push({
-        fillStyle: 'rgba(0, 0, 200, 0.5)',
-        // fillRect: [30, 30, 55, 50],
-        x: 30,
-        y: 30,
-        width: 55,
-        height: 50
-    });
+    // actors.push(anim.create('Actor', {
+    //     x: 0,
+    //     y: 0,
+    //     width: 100,
+    //     height: 100,
+    //     fillStyle: 'rgba(100, 0, 200, 0.5)',
+    //     move: { x: 3, y: 1 }
+    // }));
 
-    // actors.push({
-    //     fillStyle: 'rgba(16, 250, 13, 0.5)',
-    //     fillRect: [60, 60, 85, 80]
-    // });
+    // actors.push(anim.create('Actor', {
+    //     x: 0,
+    //     y: 0,
+    //     width: 50,
+    //     height: 50,
+    //     fillStyle: 'rgba(255, 0, 15, 0.5)',
+    //     move: { x: 1, y: 2 }
+    // }));
+
+    // actors.push(anim.create('Actor', {
+    //     x: 0,
+    //     y: 0,
+    //     width: 30,
+    //     height: 80,
+    //     fillStyle: 'rgba(100, 100, 0, 0.5)',
+    //     move: { x: 2.5, y: 2 }
+    // }));
+
+    // actors.push(anim.create('Actor', {
+    //     x: 0,
+    //     y: 0,
+    //     width: 40,
+    //     height: 50,
+    //     fillStyle: 'rgba(0, 250, 0, 0.5)',
+    //     move: { x: 4, y: 3 }
+    // }));
 
 
+
+    for(var i = 0; i < 10; i++){
+        actors.push(anim.create('Actor', {
+            x: 0,
+            y: 0,
+            width: i * 5 + 10,
+            height: i * 5 + 10,
+            fillStyle: 'rgba(' + anim.rand(0, 255) + ', ' + anim.rand(0, 255) + ', ' + anim.rand(0, 255) + ', ' + anim.rand(5, 10) / 10 + ')',
+            move: {
+                x: 1.2,
+                y: i * .01 + .1
+            }
+        }));
+    }
+
+
+    // var loops = 0,
+    //     interval = setInterval(function(){
+    //         if(loops >= 100){
+    //             clearInterval(interval);
+    //             return;
+    //         }
+    //         loops++;
+    //         render();
+    //     }, 0); 
 
     render();
 });
-
-// var a1 = new anim.actor.Actor({
-//     config: 'object'
-// });
-
-// console.log(a1, a1.getInfo());
