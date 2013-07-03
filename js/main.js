@@ -155,15 +155,15 @@ $(function(){
     var canvas = $('#canvas')[0];
 
 
-    for(var i = 0; i < 10; i++){
+    for(var i = 0; i < 20; i++){
         anim.addActor({
-            x: 100,
-            y: 100,
-            width: (i + 3) * 8,
-            height: (i + 3) * 8,
+            x: 200,
+            y: 200,
+            width: (i + 10) * 1.1,
+            height: (i + 10) * 1.1,
             fillStyle: 'rgba(' + anim.rand(0, 255) + ', ' + anim.rand(0, 255) + ', ' + anim.rand(0, 255) + ', ' + anim.rand(5, 10) / 10 + ')',
-            speed: 8,
-            direction: anim.rand(0, 359)
+            speed: (i * .5),
+            direction: i + 23
         });
     }
 
