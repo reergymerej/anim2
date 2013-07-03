@@ -82,8 +82,6 @@ var anim = {
         this.canvas = canvas;
         this.context = this.canvas.getContext('2d');
 
-        console.log(this.actors);
-
         this.start = Date.now();
         this.end = seconds ? this.start + seconds * 1000 : undefined;
 
@@ -111,6 +109,13 @@ var anim = {
         if(this.end === undefined || Date.now() < this.end){
             requestAnimationFrame(this.renderFrame.bind(this));
         }
+    },
+
+    /**
+    * Get radians from degrees.
+    */
+    getRad: function(degrees){
+        return degrees * (Math.PI/180);
     }
 };
 
@@ -121,51 +126,63 @@ anim.extend(anim.Actor.prototype, {
         context.fillRect(this.x, this.y, this.width, this.height);
         this.update(context);
     },
+
+    // get the next x and y based on speed and direction
     update: function(context){
-        var canvas = context.canvas,
-            nextX = this.x + this.move.x,
-            nextY = this.y + this.move.y;
 
-        this.x = nextX;
-        this.y = nextY;
+        var canvas = context.canvas;
 
-        if(nextX + this.width > canvas.width || nextX < 0){
-            this.move.x *= -1;
+        this.x += this.speed * Math.cos(anim.getRad(this.direction));
+        this.y += this.speed * Math.sin(anim.getRad(this.direction));
+
+        if(this.x + this.width > canvas.width || this.x < 0){
+            // debugger;
+            this.direction = bounceX(this.direction);
+            // this.direction = 180 - this.direction%360;
         }
 
-        if(nextY + this.height > canvas.height || nextY < 0){
-            this.move.y *= -1;
+        if(this.y + this.height > canvas.height || this.y < 0){
+            // debugger;
+            // this.direction = ( 180 - this.direction%360 ) * -1;
+            this.direction *= -1;
         }
+
     }
 });
-
 
 
 $(function(){
     var canvas = $('#canvas')[0];
 
+
     for(var i = 0; i < 10; i++){
         anim.addActor({
-            x: 0,
-            y: 0,
-            width: i * 5 + 10,
-            height: i * 5 + 10,
+            x: 100,
+            y: 100,
+            width: (i + 3) * 8,
+            height: (i + 3) * 8,
             fillStyle: 'rgba(' + anim.rand(0, 255) + ', ' + anim.rand(0, 255) + ', ' + anim.rand(0, 255) + ', ' + anim.rand(5, 10) / 10 + ')',
-            move: {
-                x: 1.2,
-                y: i * .01 + .1
-            }
+            speed: 8,
+            direction: anim.rand(0, 359)
         });
     }
 
+
     anim.play(canvas, 0, function(actors){
-        var move;
-
+        var actor;
         for(var i = 0; i < actors.length; i++){
-            move = actors[i].move;
-            move.x += .1;
-            move.y += .1;
+            actor = actors[i];
+            actor.direction += (actor.id%2 === 0) ? actor.id : -actor.id/2;
         }
-
     });
 });
+
+
+function bounceX(angle){
+    if(angle <= 90){
+        return 180 - angle;
+    }
+
+    return 180 - angle;
+    return angle - 180;
+}
