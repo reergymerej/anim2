@@ -43,6 +43,18 @@ var anim = {
         return Math.floor(Math.random() * (max - min + 1)) + min;
     },
 
+    start: undefined,
+    end: undefined,
+    requestId: undefined,
+    canvas: undefined,
+    context: undefined,
+    /**
+    * All the Actors.
+    */
+    actors: [],
+    actorId: 0,
+    updateActors: undefined,
+
     Actor: function(config){
 
         var me = this;
@@ -51,6 +63,54 @@ var anim = {
         anim.eachOwn(config, function(prop, value){
             me[prop] = value;
         });
+    },
+
+    addActor: function(config){
+        this.extend(config, {
+            id: this.actorId++
+        });
+        this.actors.push(this.create('Actor', config));
+    },
+
+    /**
+    * Start the animation.
+    * @param canvas
+    * @param {Number} [seconds] Stop after this many seconds.  Run continuously if not provided.
+    * @param {function} updateActors
+    */
+    play: function(canvas, seconds, updateActors){
+        this.canvas = canvas;
+        this.context = this.canvas.getContext('2d');
+
+        console.log(this.actors);
+
+        this.start = Date.now();
+        this.end = seconds ? this.start + seconds * 1000 : undefined;
+
+        this.updateActors = updateActors;
+
+        this.renderFrame();
+    },
+
+    renderFrame: function(){
+        var me = this,
+            actor;
+
+        // clear the canvas
+        this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
+
+        // update each actor
+        this.updateActors(this.actors);
+
+        // draw each actor
+        for(var i = 0, max = this.actors.length; i < max; i++){
+            actor = this.actors[i];
+            actor.draw(this.context);
+        }
+
+        if(this.end === undefined || Date.now() < this.end){
+            requestAnimationFrame(this.renderFrame.bind(this));
+        }
     }
 };
 
@@ -82,65 +142,10 @@ anim.extend(anim.Actor.prototype, {
 
 
 $(function(){
-    var canvas = $('#canvas')[0],
-        context = canvas.getContext('2d'),
-        actors = [];
-
-    function render(){
-        var actor;
-
-        // clear the canvas
-        context.clearRect(0, 0, context.canvas.width, context.canvas.height);
-
-        // draw each actor
-        for(var i = 0, max = actors.length; i < max; i++){
-            actor = actors[i];
-            actor.draw(context);
-        }
-
-        requestAnimationFrame(render);
-    }
-
-    // actors.push(anim.create('Actor', {
-    //     x: 0,
-    //     y: 0,
-    //     width: 100,
-    //     height: 100,
-    //     fillStyle: 'rgba(100, 0, 200, 0.5)',
-    //     move: { x: 3, y: 1 }
-    // }));
-
-    // actors.push(anim.create('Actor', {
-    //     x: 0,
-    //     y: 0,
-    //     width: 50,
-    //     height: 50,
-    //     fillStyle: 'rgba(255, 0, 15, 0.5)',
-    //     move: { x: 1, y: 2 }
-    // }));
-
-    // actors.push(anim.create('Actor', {
-    //     x: 0,
-    //     y: 0,
-    //     width: 30,
-    //     height: 80,
-    //     fillStyle: 'rgba(100, 100, 0, 0.5)',
-    //     move: { x: 2.5, y: 2 }
-    // }));
-
-    // actors.push(anim.create('Actor', {
-    //     x: 0,
-    //     y: 0,
-    //     width: 40,
-    //     height: 50,
-    //     fillStyle: 'rgba(0, 250, 0, 0.5)',
-    //     move: { x: 4, y: 3 }
-    // }));
-
-
+    var canvas = $('#canvas')[0];
 
     for(var i = 0; i < 10; i++){
-        actors.push(anim.create('Actor', {
+        anim.addActor({
             x: 0,
             y: 0,
             width: i * 5 + 10,
@@ -150,19 +155,17 @@ $(function(){
                 x: 1.2,
                 y: i * .01 + .1
             }
-        }));
+        });
     }
 
+    anim.play(canvas, 0, function(actors){
+        var move;
 
-    // var loops = 0,
-    //     interval = setInterval(function(){
-    //         if(loops >= 100){
-    //             clearInterval(interval);
-    //             return;
-    //         }
-    //         loops++;
-    //         render();
-    //     }, 0); 
+        for(var i = 0; i < actors.length; i++){
+            move = actors[i].move;
+            move.x += .1;
+            move.y += .1;
+        }
 
-    render();
+    });
 });
