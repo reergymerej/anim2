@@ -1,16 +1,80 @@
 var anim = {
+
+    /**
+    * Set configuration properties.
+    * @param {Object} props
+    */
+    config: function(props){
+        this.extend(this, props, true);
+    },
+
+    /**
+    * framerate
+    */
+    fps: 30,
+
+
     /**
     * Add the properties of one object to another.
     * @method extend
     * @param {object} obj1 destination object
     * @param {object} obj2 object to add from
+    * @param {boolean} [overwrite=false]
     */
-    extend: function(obj1, obj2){
+    extend: function(obj1, obj2, overwrite){
+        overwrite = !!overwrite;
+
         anim.eachOwn(obj2, function(prop, val){
-            if(!obj1.hasOwnProperty(prop)){
+            var hasProp = obj1.hasOwnProperty(prop);
+            if(!hasProp || hasProp === overwrite){
                 obj1[prop] = val;
             }
         });
+    },
+
+    /**
+    * Check if a value is between two others, inclusive.
+    * @param {Number} x the value to test
+    * @param {Number} lowerRange
+    * @param {Number} upperRange
+    */
+    between: function(x, lowerRange, upperRange){
+        return x >= lowerRange && x <= upperRange;
+    },
+
+    /**
+    * Find intersection of two lines.
+    * @param {Line} line1
+    * @param {Line} line2
+    * @return {Point} null if there is no intersection
+    */
+    getIntersection: function(line1, line2){
+        console.log('find intersection', line1, line2);
+
+        if(line1.m === line2.m){
+            return null;
+        }
+
+        var x1, y1,
+            x2, y2;
+
+        x1 = 0;
+        y1 = line1.getY(x1);
+        x2 = line2.getX(y1);
+
+        
+
+
+        // y = mx + b
+        // y[1] = m[1] * x[1] + b[1]
+        // intersection y[1] = y[2]
+
+        // m[1] * x[1] + b[1] = m[2] * x[2] + b[2]
+        // y[1] = m[2] * x[2] + b[2]
+
+        // http://www.mathopenref.com/coordintersection.html
+
+        debugger;
     },
 
     /**
@@ -61,8 +125,18 @@ var anim = {
     actorId: 0,
     updateActors: undefined,
     clickHandlers: [],
-    moveToFrames: 0,
 
+    /**
+    * Set the canvas and context used for animation.
+    */
+    setCanvas: function(canvas){
+        this.canvas = canvas;
+        this.context = canvas.getContext('2d');
+    },
+
+    /**
+    * @class Actor
+    */
     Actor: function(config){
 
         var me = this;
@@ -93,10 +167,11 @@ var anim = {
                 }
                 break;
             case 'Circle':
+                this.width = config.radius / 2;
+                this.height = this.width;
                 this.draw = function(context){
-                    var radius = this.width / 2;
                     context.beginPath();
-                    context.arc(0 + radius, 0 + radius, radius, 0, anim.getRad(360) );
+                    context.arc(0 + this.radius, 0 + this.radius, this.radius, 0, anim.getRad(360) );
                     context.fillStyle = this.fillStyle;
                     context.fill();
                 }
@@ -128,6 +203,41 @@ var anim = {
     },
 
     /**
+    * @class Point
+    */
+    Point: function(config){
+        this.x = config.x;
+        this.y = config.y;
+    },
+
+    /**
+    * @class Line
+    * @param {Object} config either the slope elements (m, x, b) or two points (p1, p2)
+    */
+    Line: function(config){
+        var y, m, x, b, p1, p2;
+
+        if(config.hasOwnProperty('m')){
+            // y = config.m * config.x + config.b;
+            m = config.m;
+            b = config.b;
+        } else {
+            // determine line from two points
+            p1 = config.p1;
+            p2 = config.p2;
+            m = (p2.y - p1.y) / (p2.x - p1.x);
+
+            // find y-intercept
+            b = p1.y - (m * p1.x);
+        }
+
+        anim.extend(this, {
+            m: m,
+            b: b
+        });
+    },
+
+    /**
     * @param {Object} config
     * @return {anim.Actor}
     */
@@ -143,15 +253,43 @@ var anim = {
     },
 
     /**
+    * Remove an actor from the stage.
+    * @param {Actor/Number} actor Actor or Actor's id.
+    * @return {Actor}
+    */
+    removeActor: function(actor){
+        var index;
+
+        if(typeof actor === 'number'){
+            // Find actor by id.
+            for(var i = 0; i < this.actors.length; i++){
+                if(this.actors[i].id === actor){
+                    index = i;
+                    break;
+                }
+            }
+        } else {
+            index = this.actors.indexOf(actor);
+        }
+
+        return this.actors.splice(index, 1);
+    },
+
+    /**
     * Start the animation.
-    * @param canvas
     * @param {Number} [frames] Stop after this many frames.  Run continuously if -1.
     * @param {function} updateActors
     */
-    play: function(canvas, frames, updateActors){
+    play: function(frames, updateActors){
         var me = this;
-        this.canvas = canvas;
-        this.context = this.canvas.getContext('2d');
+        
+        if(!this.canvas){
+            console.error('no canvas applied');
+            return;
+        }
+        
+        // register the context
+        this.setCanvas(this.canvas);
 
         // Add click listeners.
         me.clicks = [];
@@ -175,7 +313,6 @@ var anim = {
 
         // Process the clicks.
         this.processClicks();
-        
 
         // update each actor
         this.updateActors(this.actors);
@@ -191,29 +328,80 @@ var anim = {
             actor.setNextPosition(this.context);
         }
 
+        // process collisions
+        this.processCollisions();
+
         // prepare for the next loop
         if(this.framesLeft > 0 || this.framesLeft === -1){
             if(this.framesLeft > 0){
                 this.framesLeft--;  
             }
-            requestAnimationFrame(this.animate.bind(this));
+
+            setTimeout(function(){
+                // requestAnimationFrame(this.animate.bind(this));
+                requestAnimationFrame(me.animate.bind(me));
+            }, 1000/me.fps );
+        } else {
+            console.log('done animating');
         }
     },
 
     /**
-    * Execute all the click handlers.
+    * Execute all the click handlers.  See if any Actors were clicked on.
     */
     processClicks: function(){
-        var x, y;
+        var x, y, actor;
 
-        for(var i = 0; i < this.clickHandlers.length; i++){
-            for(var j = 0; j < this.clicks.length; j++){
-                x = this.clicks[j].offsetX;
-                y = this.clicks[j].offsetY;
+        for(var j = 0; j < this.clicks.length; j++){
+            x = this.clicks[j].offsetX;
+            y = this.clicks[j].offsetY;
+
+            // Any actors clicked on?
+            for(var i = 0, max = this.actors.length; i < max; i++){
+                actor = this.actors[i];
+                if(x >= actor.x && x <= actor.x + actor.width &&
+                    y >= actor.y && y <= actor.y + actor.height){
+                    if(typeof actor.onClick === 'function'){
+                        actor.onClick();
+                    }
+                }
+            }
+
+            // Execute click handlers.
+            for(var i = 0; i < this.clickHandlers.length; i++){
                 this.clickHandlers[i](x, y);
             }
         }
         this.clicks = [];
+    },
+
+    /**
+    * Identify collisions and process all collision handlers for each actor.
+    */
+    processCollisions: function(){
+        var actor,
+            otherActor,
+            actorBB,
+            otherActorBB;
+
+        for(var i = 0, max = this.actors.length; i < max; i++){
+            actor = this.actors[i];
+            actorBB = actor.getBoundingBox();
+
+            for(var j = 0; j < max; j++){
+                otherActor = this.actors[j];
+                if(actor === otherActor){
+                    continue;
+                }
+                otherActorBB = otherActor.getBoundingBox();
+
+                // Do these actors overlap?
+                console.log(actorBB, otherActorBB);
+                console.log(actorBB.x1 >= otherActorBB.x1 || actorBB.x1 <= otherActorBB.x2);
+                console.log(actorBB.x2 >= otherActorBB.x1 && actorBB.x1 <= otherActorBB.x1);
+                debugger;
+            }
+        }        
     },
 
     /**
@@ -255,6 +443,36 @@ var anim = {
 anim.extend(anim.Actor.prototype, {
 
     /**
+    * Pixels moved per frame.
+    */
+    speed: 0,
+
+    /**
+    * Flag used to note that this Actor was given instructions to move to a position.
+    */
+    isMovingToPosition: false,
+
+    /**
+    * x,y coords for position moving to
+    */
+    movingTo: {},
+
+    /**
+    * Number of frames left for isMovingToPosition to complete.
+    */
+    moveToFrames: 0,
+
+    /**
+    * Callback run when this Actor is clicked on.
+    */
+    onClick: undefined,
+
+    /**
+    * Callback run when this Actor collides with another Actor.
+    */
+    onCollision: undefined,
+
+    /**
     * Move a number of pixels.
     * @param {Number} x
     * @param {Number} y
@@ -269,28 +487,48 @@ anim.extend(anim.Actor.prototype, {
         };
     },
 
-
     /**
     * Move the a new position.
     * @param {Number} x
     * @param {Number} y
-    * @param {Number} [frames] If provided, move to that position over the next frames.
+    * @param {Number} [seconds] If provided, move to that position over the next seconds.
+    * Otherwise, use the current speed.  If speed is 0, move instantly.
     */
-    moveTo: function(x, y, frames){
-        var xChange = x - this.x,
-            yChange = y - this.y,
-            distance = Math.sqrt( xChange * xChange + yChange * yChange),
-            slope = yChange / xChange,
-            degrees = 180 - anim.getDeg( Math.atan2(xChange, yChange) );
+    moveTo: function(x, y, seconds){
+        var xChange,
+            yChange,
+            distance,
+            degrees,
+            frames;
 
-        if(frames){
-            this.direction = (270 + degrees)%360;
-            this.speed = distance/frames;
-            this.moveToFrames = frames;
-        } else {
+        // move immediately
+        if(!seconds && !this.speed){
             this.x = x;
             this.y = y;
+            return;
         }
+
+        xChange = x - this.x;
+        yChange = y - this.y;
+        degrees = 180 - anim.getDeg( Math.atan2(xChange, yChange) ),
+        this.direction = (270 + degrees)%360;
+        distance = Math.sqrt( xChange * xChange + yChange * yChange);
+
+        if(!seconds){
+            // use the current speed
+            frames = distance / this.speed;
+        } else {
+            // calculate a new speed
+            frames = anim.fps * seconds;
+            this.speed = distance/frames;
+        }   
+        
+        this.isMovingToPosition = true;
+        this.movingTo = {
+            x: x,
+            y: y
+        };
+        this.moveToFrames = frames;
     },
 
     // get the next x and y based on speed and direction
@@ -301,12 +539,15 @@ anim.extend(anim.Actor.prototype, {
         // update the speed
         this.accelerate(this.acceleration);
 
-        if(this.moveToFrames){
-            this.moveToFrames--;
-        } else if(this.moveToFrames === 0){
-            this.speed = 0;
-            delete this.moveToFrames;
+        if(this.isMovingToPosition){
+            if(--this.moveToFrames <= 0){
+                this.x = this.movingTo.x;
+                this.y = this.movingTo.y;
+                this.isMovingToPosition = false;
+                this.speed = 0;
+            }
         }
+
 
         // update the rotation
         this.rotate(this.spin);
@@ -373,32 +614,101 @@ anim.extend(anim.Actor.prototype, {
     */
     setAcceleration: function(acceleration){
         this.acceleration = acceleration;
+    },
+
+    /**
+    * Get the 4 points that describe the space this Actor exists in.
+    * @return {Object}
+    */
+    getBoundingBox: function(){
+        return {
+            x1: this.x,
+            x2: this.x + this.width,
+            y1: this.y,
+            y2: this.y + this.height
+        };
     }
 });
 
+anim.extend(anim.Line.prototype, {
+    getY: function(x){
+        return this.m * x + this.b;
+    },
+    getX: function(y){
+        return (y - this.b) / this.m;
+    }
+});
+
+
+var line1, line2;
+
+
+line1 = anim.create('Line', {m: 1, x: 10, b: 0});
+line2 = anim.create('Line', {m: -1, x: 0, b: 10});
 
 $(function(){
     var canvas = $('#canvas')[0],
         actor;
 
-    actor = anim.addActor({
-        x: 200,
-        y: 200,
-        spin: 1,
-        type: 'Image',
-        src: 'img/flag.png'
+
+
+
+    return;
+
+
+    anim.config({
+        canvas: canvas,
+        fps: 100
     });
+
+    var target = anim.addActor({
+        x: 0,
+        y: 0,
+        speed: 2,
+        direction: 0,
+        type: 'Rectangle',
+        // type: 'Image',
+        // src: 'img/flag.png'
+        onClick: function(){
+            this.spin += 1;
+            this.direction *= -1;
+            this.speed *= 1.1;
+        },
+        onCollision: function(actors){
+            console.log(this, 'collided with', actors);
+        }
+    });
+
 
     anim.onClick(function(x, y){
-        actor.moveTo(x, y, 50);
+        var radius = anim.rand(1, 5) * 13;
+
+        anim.addActor({
+            type: 'Circle',
+            radius: radius,
+            // x: x - radius/2,
+            // y: y - radius/2
+            x: x,
+            y: y
+        });
     });
 
-    anim.play(canvas, -1, function(actors){
+
+    anim.play(-1, function(actors){
         var actor,
-            maxSpeed = 8;
+            widthShift;
+        
         for(var i = 0; i < actors.length; i++){
             actor = actors[i];
-            actor.spin = actor.speed;
+            if(actor.type === 'Circle'){
+                actor.radius *= .9;
+                if(actor.radius < 1){
+                    anim.removeActor(actor);
+                    i--;
+                }
+            }
         }
+
+        target.direction += 1;
     });
 });
