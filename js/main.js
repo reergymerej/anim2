@@ -1,3 +1,91 @@
+var geo = {
+    /**
+    * @param {Number} config.x
+    * @param {Number} config.y
+    */
+    Point: function(config){
+        this.x = config.x;
+        this.y = config.y;
+    },
+
+    /**
+    * @class
+    * @param {Number} config.direction
+    * @param {Number} config.magnitude
+    */
+    Vector: function(config){
+        this.magnitude = config.magnitude;
+        this.direction = config.direction;
+        this.setDirection(config.direction);
+    },
+
+    /**
+    * Get a hypotenuse length given opposite and adjacent lengths.
+    * @param {Number} opposite
+    * @param {Number} adjacent
+    * @return {Number}
+    */
+    getHypotenuse: function(opposite, adjacent){
+        return Math.sqrt(opposite * opposite + adjacent * adjacent);
+    },
+
+    /**
+    * Get radians from degrees.
+    * @param {Number} degrees
+    * @return {Number} radians
+    */
+    getRad: function(degrees){
+        return degrees * (Math.PI/180);
+    },
+
+    /**
+    * Get degrees from radians.
+    * @param {Number} radians
+    * @return {Number} degrees
+    */
+    getDeg: function(radians){
+        return radians * (180/Math.PI);
+    }
+};
+
+geo.Vector.prototype = {
+
+    /**
+    * Set the direction, update the x and y.  Ensures direction < 360.
+    * @param {Number} direction
+    * @return {Vector} this
+    */
+    setDirection: function(direction){
+        var radians;
+        this.direction = direction%360;
+        radians = geo.getRad(this.direction);
+        this.x = this.magnitude * Math.cos(radians);
+        this.y = this.magnitude * Math.sin(radians);
+        return this;
+    },
+
+    /**
+    * Reverse this vector.
+    * @return {Vector} this
+    */
+    reverse: function(){
+        this.setDirection(this.direction + 180);
+        return this;
+    },
+
+    /**
+    * Add another vector to this one.
+    * @param {Vector} vector
+    * @return {Vector} this
+    */
+    add: function(vector){
+        this.x += vector.x;
+        this.y += vector.y;
+        this.direction = geo.getDeg( Math.atan2( this.x, this.y ) );
+        return this;
+    }
+};
+
 var anim = {
 
     /**
@@ -12,7 +100,6 @@ var anim = {
     * framerate
     */
     fps: 30,
-
 
     /**
     * Add the properties of one object to another.
@@ -35,11 +122,35 @@ var anim = {
     /**
     * Check if a value is between two others, inclusive.
     * @param {Number} x the value to test
-    * @param {Number} lowerRange
-    * @param {Number} upperRange
+    * @param {Range} range
     */
-    between: function(x, lowerRange, upperRange){
-        return x >= lowerRange && x <= upperRange;
+    between: function(x, range){
+        return x >= range.a && x <= range.b;
+    },
+
+    /**
+    * Check if a range overlaps another range.
+    * @param {Range} range1
+    * @param {Range} range2
+    * @return {boolean}
+    */
+    rangesOverlap: function(range1, range2){
+        return this.between(range1.a, range2) || this.between(range1.b, range2);
+    },
+
+    /**
+    * @class
+    * @param {Number} config.a
+    * @param {Number} config.b
+    */
+    Range: function(config){
+        var temp;
+        if(config.a > config.b){
+            temp = config.b;
+            config.b = config.a;
+            config.a = temp;
+        }
+        anim.extend(this, config);
     },
 
     /**
@@ -167,7 +278,7 @@ var anim = {
                 }
                 break;
             case 'Circle':
-                this.width = config.radius / 2;
+                this.width = config.radius * 2;
                 this.height = this.width;
                 this.draw = function(context){
                     context.beginPath();
@@ -190,9 +301,27 @@ var anim = {
             case 'Image':
                 this.image = new Image();
                 this.image.src = config.src;
+                // TODO This should be moved to the prototype once Actor types are split out.
                 this.draw = function(context){
-                    // context.drawImage(this.image, this.x, this.y);
-                    context.drawImage(this.image, 0, 0);
+                    if(!this.image.width){
+                        return;
+                    }
+
+                    // Change the image frame, if it's time.
+                    this.sinceFrameChange++;
+                    if(this.sinceFrameChange === this.changeFrameEvery){
+                        this.nextFrame();
+                        this.sinceFrameChange = 0;
+                    }
+
+                    // Draw image
+                    context.drawImage(
+                        this.image,
+                        this.width * this.frame, 0, // source offset
+                        this.width, this.height,    // image dimensions
+                        0, 0,                       // position on canvas
+                        this.width, this.height     // scaling
+                    );
                 }
                 break;
             default:
@@ -204,6 +333,8 @@ var anim = {
 
     /**
     * @class Point
+    * @param {Number} config.x
+    * @param {Number} config.y
     */
     Point: function(config){
         this.x = config.x;
@@ -304,6 +435,16 @@ var anim = {
         this.animate();
     },
 
+    /**
+    * Stop the animation loop.
+    */
+    stop: function(){
+        this.framesLeft = 0;
+    },
+
+    /**
+    * Render the next frame, make updates.
+    */
     animate: function(){
         var me = this,
             actor;
@@ -315,7 +456,16 @@ var anim = {
         this.processClicks();
 
         // update each actor
-        this.updateActors(this.actors);
+        if(typeof this.updateActors === 'function'){
+            this.updateActors(this.actors);
+        }
+
+        for(var i = 0, max = this.actors.length; i < max; i++){
+            actor = this.actors[i];
+            if(actor && typeof actor.onFrame === 'function'){
+                actor.onFrame();
+            }
+        }
 
         // draw each actor
         for(var i = 0, max = this.actors.length; i < max; i++){
@@ -350,11 +500,12 @@ var anim = {
     * Execute all the click handlers.  See if any Actors were clicked on.
     */
     processClicks: function(){
-        var x, y, actor;
+        var x, y, actor, point;
 
         for(var j = 0; j < this.clicks.length; j++){
             x = this.clicks[j].offsetX;
             y = this.clicks[j].offsetY;
+            point = new this.Point({x: x, y: y});
 
             // Any actors clicked on?
             for(var i = 0, max = this.actors.length; i < max; i++){
@@ -369,7 +520,7 @@ var anim = {
 
             // Execute click handlers.
             for(var i = 0; i < this.clickHandlers.length; i++){
-                this.clickHandlers[i](x, y);
+                this.clickHandlers[i](point);
             }
         }
         this.clicks = [];
@@ -381,27 +532,37 @@ var anim = {
     processCollisions: function(){
         var actor,
             otherActor,
-            actorBB,
-            otherActorBB;
+            collisionsToProcess = [],
+            collision;
 
         for(var i = 0, max = this.actors.length; i < max; i++){
             actor = this.actors[i];
-            actorBB = actor.getBoundingBox();
+            // TODO maybe cache this in the Actor and invalidate when moved/resized
+            // actorBB = actor.getBoundingBox();
 
-            for(var j = 0; j < max; j++){
-                otherActor = this.actors[j];
-                if(actor === otherActor){
-                    continue;
-                }
-                otherActorBB = otherActor.getBoundingBox();
-
-                // Do these actors overlap?
-                console.log(actorBB, otherActorBB);
-                console.log(actorBB.x1 >= otherActorBB.x1 || actorBB.x1 <= otherActorBB.x2);
-                console.log(actorBB.x2 >= otherActorBB.x1 && actorBB.x1 <= otherActorBB.x1);
-                debugger;
+            if(typeof actor.onCollision === 'function'){
+                for(var j = 0; j < max; j++){
+                    otherActor = this.actors[j];
+                    if(actor === otherActor){
+                        continue;
+                    }
+                    
+                    if(actor.overlaps(otherActor)){
+                        collisionsToProcess.push({
+                            actor: actor,
+                            collidedWith: otherActor
+                        });
+                    }
+                }   
             }
-        }        
+        } 
+
+        while(collisionsToProcess.length){
+            collision = collisionsToProcess.shift();
+            if(collision.actor && collision.collidedWith){
+                collision.actor.onCollision(collision.collidedWith);
+            }
+        }
     },
 
     /**
@@ -415,6 +576,8 @@ var anim = {
     * Get degrees from radians.
     */
     getDeg: function(radians){
+        console.warn('wrong');
+        // degrees = radians * (180/pi)
         return radians / (Math.PI/180);
     },
 
@@ -422,30 +585,79 @@ var anim = {
     * Get a random color.
     */
     getColor: function(){
-        var num = this.rand(0, 255),
-            r = Math.random() <= 5 ? num : 0,
-            g = Math.random() <= 5 ? num : 0,
-            b = Math.random() <= 5 ? this.rand(0, 255) : num;
+        var r = this.rand(0, 255),
+            g = this.rand(0, 255),
+            b = r + g > 400 ? 0 : r + g < 100 ? 255: this.rand(0, 255);
 
-        return 'rgba(' + r + ', ' + g + ', ' + b + ', 0.5)';
+        return 'rgba(' + r + ', ' + g + ', ' + b + ', 1)';
         // return 'rgba(' + this.rand(0, 255) + ', ' + this.rand(0, 255) + ', ' + this.rand(0, 255) + ', ' + this.rand(5, 10) / 10 + ')'
     },
 
     /**
-    * Add an onclick handler to the canvas.
+    * Add an onclick handler to the canvas.  Each handler is passed a {Point} where the click happened.
     * @param {function} handler
     */
     onClick: function(handler){
         this.clickHandlers.push(handler);
-    }
+    },
+
+    /**
+    * Storage for unprocessed clicks
+    * @type {Array}
+    */
+    clicks: [],
+
+    /**
+    * Collisions during this frame
+    * @type {Array}
+    */
+    collisions: []
 };
 
 anim.extend(anim.Actor.prototype, {
 
     /**
+    * @type {Number}
+    */
+    frame: 0,
+
+    /**
+    * Advance this image's frame every x animation frames.
+    * @type {Number}
+    */
+    changeFrameEvery: 0,
+
+    /**
+    * How many animation frames ago this image's frame was changed.
+    * @type {Number}
+    */
+    sinceFrameChange: 0,
+
+    /**
+    * @type {Point}
+    */
+    lastPosition: undefined,
+
+    /**
     * Pixels moved per frame.
     */
     speed: 0,
+
+    /**
+    * How much the direction changes per frame.
+    * @type {Number}
+    */
+    turnRate: 0,
+
+    /**
+    * {Number} opacity between 0 and 1 (inclusive)
+    */
+    opacity: 1,
+
+    /**
+    * {String} fillStyle
+    */
+    fillStyle: undefined,
 
     /**
     * Flag used to note that this Actor was given instructions to move to a position.
@@ -469,8 +681,35 @@ anim.extend(anim.Actor.prototype, {
 
     /**
     * Callback run when this Actor collides with another Actor.
+    * @param {Actor} actor collided with
     */
     onCollision: undefined,
+
+    /**
+    * Callback run on each frame.
+    */
+    onFrame: undefined,
+
+    /**
+    * Move to the next Image frame.
+    * @return {Actor} this
+    */
+    nextFrame: function(){
+        this.frame = (this.frame + 1) % (this.image.width / this.width);
+        return this;
+    },
+
+    /**
+    * Move to the previous Image frame.
+    * @return {Actor} this
+    */
+    prevFrame: function(){
+        this.frame = this.frame - 1;
+        if(this.frame < 0){
+            this.frame = (this.image.width / this.width) - 1;
+        }
+        return this;
+    },
 
     /**
     * Move a number of pixels.
@@ -488,6 +727,14 @@ anim.extend(anim.Actor.prototype, {
     },
 
     /**
+    * Skip ahead x pixels in the current direction
+    * @param {Number} pixels
+    */
+    skipAhead: function(pixels){
+
+    },
+
+    /**
     * Move the a new position.
     * @param {Number} x
     * @param {Number} y
@@ -502,7 +749,7 @@ anim.extend(anim.Actor.prototype, {
             frames;
 
         // move immediately
-        if(!seconds && !this.speed){
+        if(!seconds || !this.speed){
             this.x = x;
             this.y = y;
             return;
@@ -534,7 +781,8 @@ anim.extend(anim.Actor.prototype, {
     // get the next x and y based on speed and direction
     setNextPosition: function(context){
 
-        var canvas = context.canvas;
+        var canvas = context.canvas,
+            nextPoint;
 
         // update the speed
         this.accelerate(this.acceleration);
@@ -548,13 +796,20 @@ anim.extend(anim.Actor.prototype, {
             }
         }
 
+        // this.lastPosition = anim.create('Point', {x: this.x, y: this.y});
+        this.lastPosition = new anim.Point({x: this.x, y: this.y});
 
         // update the rotation
         this.rotate(this.spin);
 
-        this.x += this.speed * Math.cos(anim.getRad(this.direction));
-        this.y += this.speed * Math.sin(anim.getRad(this.direction));
+        // update the direction
+        this.direction += this.turnRate;
 
+        nextPoint = this.getNextPosition();
+        this.moveTo(nextPoint.x, nextPoint.y, 0);
+
+        // this.x += this.speed * Math.cos(anim.getRad(this.direction));
+        // this.y += this.speed * Math.sin(anim.getRad(this.direction));
         if(this.x + this.width > canvas.width || this.x < 0){
             this.direction = 180 - this.direction;
         }
@@ -562,6 +817,33 @@ anim.extend(anim.Actor.prototype, {
         if(this.y + this.height > canvas.height || this.y < 0){
             this.direction *= -1;
         }
+    },
+
+    /**
+    * Get next position based on current speed and direction.
+    * @param {Number} [frames] If provided, get the next position after this many frames.
+    * @return {Point}
+    */
+    getNextPosition: function(frames){
+        var x, y, frames = frames || 1;
+        x = this.x + this.speed * frames * Math.cos(anim.getRad(this.direction));
+        y = this.y + this.speed * frames * Math.sin(anim.getRad(this.direction));
+        return new anim.Point({
+            x: x,
+            y: y
+        });
+    },
+
+    /**
+    * Move the the next position based on current velocity.
+    * @param {Number} [frames] If provided, get the next position after this many frames.
+    * @return {Actor}
+    */
+    nextPosition: function(frames){
+        var position = this.getNextPosition(frames);
+        this.x = position.x;
+        this.y = position.y;
+        return this;
     },
 
     /**
@@ -579,6 +861,24 @@ anim.extend(anim.Actor.prototype, {
     rotate: function(degrees){
         degrees = degrees || 0;
         this.rotation += degrees;
+    },
+
+    /**
+    * Change direction a number of degrees.
+    * @param {Number} degrees
+    * @return {Actor}
+    */
+    turn: function(degrees){
+        this.setDirection(this.direction + degrees);
+        return this;
+    },
+
+    /**
+    * Set direction.  If < 0 || > 360, corrects it.
+    * @param {Number} degrees
+    */
+    setDirection: function(degrees){
+        this.direction = degrees%360;
     },
 
     /**
@@ -627,6 +927,33 @@ anim.extend(anim.Actor.prototype, {
             y1: this.y,
             y2: this.y + this.height
         };
+    },
+
+    /**
+    * Test if this Actor's bounding box overlaps another bounding box.
+    * @param {Actor} actor
+    */
+    overlaps: function(actor){
+        var thisBox = this.getBoundingBox(),
+            otherBox = actor.getBoundingBox(),
+            range1,
+            range2;
+
+        // check x axis
+        range1 = anim.create('Range', {a: thisBox.x1, b:thisBox.x2});
+        range2 = anim.create('Range', {a: otherBox.x1, b:otherBox.x2});
+        if(!anim.rangesOverlap(range1, range2)){
+            return false;
+        }
+
+        // check y axis
+        range1 = anim.create('Range', {a: thisBox.y1, b:thisBox.y2});
+        range2 = anim.create('Range', {a: otherBox.y1, b:otherBox.y2});
+        if(!anim.rangesOverlap(range1, range2)){
+            return false;
+        }
+
+        return true;
     }
 });
 
@@ -639,76 +966,59 @@ anim.extend(anim.Line.prototype, {
     }
 });
 
-
-var line1, line2;
-
-
-line1 = anim.create('Line', {m: 1, x: 10, b: 0});
-line2 = anim.create('Line', {m: -1, x: 0, b: 10});
+var actor;
 
 $(function(){
-    var canvas = $('#canvas')[0],
-        actor;
-
-
-
-
-    return;
-
+    var canvas = $('#canvas')[0];
 
     anim.config({
         canvas: canvas,
         fps: 100
     });
 
-    var target = anim.addActor({
-        x: 0,
+
+    actor = anim.addActor({
+        type: 'Image',
+        src: 'img/face.png',
+        changeFrameEvery: 10,
+        width: 100,
+        height: 100,
+        x: 200,
         y: 0,
-        speed: 2,
-        direction: 0,
-        type: 'Rectangle',
-        // type: 'Image',
-        // src: 'img/flag.png'
-        onClick: function(){
-            this.spin += 1;
-            this.direction *= -1;
-            this.speed *= 1.1;
-        },
-        onCollision: function(actors){
-            console.log(this, 'collided with', actors);
-        }
+        direction: 222,
+        speed: 3
     });
-
-
-    anim.onClick(function(x, y){
-        var radius = anim.rand(1, 5) * 13;
-
-        anim.addActor({
-            type: 'Circle',
-            radius: radius,
-            // x: x - radius/2,
-            // y: y - radius/2
-            x: x,
-            y: y
-        });
-    });
-
 
     anim.play(-1, function(actors){
-        var actor,
-            widthShift;
-        
-        for(var i = 0; i < actors.length; i++){
-            actor = actors[i];
-            if(actor.type === 'Circle'){
-                actor.radius *= .9;
-                if(actor.radius < 1){
-                    anim.removeActor(actor);
-                    i--;
-                }
-            }
-        }
+    });
 
-        target.direction += 1;
+    $('body').keydown(function(event){
+        switch(event.which){
+            // down
+            case 40:
+                actor.speed--;
+                // actor.direction = 90;
+                // actor.spin++;
+
+                break;
+            // up
+            case 38:
+                actor.speed++;
+                // actor.direction = 270;
+                // actor.spin--;
+                break;
+            // left
+            case 37:
+                // actor.direction = 180;
+                // actor.spin++;
+                actor.turnRate--;
+                break;
+            // right
+            case 39:
+                actor.turnRate++;
+                // actor.direction = 0;
+                // actor.spin--;
+                break;
+        }
     });
 });
