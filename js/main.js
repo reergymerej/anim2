@@ -1,26 +1,12 @@
+/**
+* @module geo
+*/
 var geo = {
-    /**
-    * @param {Number} config.x
-    * @param {Number} config.y
-    */
-    Point: function(config){
-        this.x = config.x;
-        this.y = config.y;
-    },
-
-    /**
-    * @class
-    * @param {Number} config.direction
-    * @param {Number} config.magnitude
-    */
-    Vector: function(config){
-        this.magnitude = config.magnitude;
-        this.direction = config.direction;
-        this.setDirection(config.direction);
-    },
 
     /**
     * Get a hypotenuse length given opposite and adjacent lengths.
+    * @for geo
+    * @method getHypotenuse
     * @param {Number} opposite
     * @param {Number} adjacent
     * @return {Number}
@@ -31,6 +17,7 @@ var geo = {
 
     /**
     * Get radians from degrees.
+    * @method getRad
     * @param {Number} degrees
     * @return {Number} radians
     */
@@ -40,18 +27,46 @@ var geo = {
 
     /**
     * Get degrees from radians.
+    * @method getDeg
     * @param {Number} radians
     * @return {Number} degrees
     */
     getDeg: function(radians){
         return radians * (180/Math.PI);
+    },
+
+    /**
+    * @class Point
+    * @constructor
+    * @param {Number} config.x
+    * @param {Number} config.y
+    */
+    Point: function(config){
+        this.x = config.x;
+        this.y = config.y;
+    },
+
+    /**
+    * @class Vector
+    * @constructor
+    * @param {Number} config.direction
+    * @param {Number} config.magnitude
+    */
+    Vector: function(config){
+        this.magnitude = config.magnitude;
+        this.direction = config.direction;
+        this.setDirection(config.direction);
     }
 };
 
+/**
+* @class Vector
+*/
 geo.Vector.prototype = {
 
     /**
     * Set the direction, update the x and y.  Ensures direction < 360.
+    * @method setDirection
     * @param {Number} direction
     * @return {Vector} this
     */
@@ -66,6 +81,7 @@ geo.Vector.prototype = {
 
     /**
     * Reverse this vector.
+    * @method reverse
     * @return {Vector} this
     */
     reverse: function(){
@@ -75,21 +91,99 @@ geo.Vector.prototype = {
 
     /**
     * Add another vector to this one.
+    * @method add
     * @param {Vector} vector
     * @return {Vector} this
     */
     add: function(vector){
         this.x += vector.x;
         this.y += vector.y;
-        this.direction = geo.getDeg( Math.atan2( this.x, this.y ) );
+        this.updateDirection();
         return this;
+    },
+
+    /**
+    * Reverse the x of this vector.  Updates direction.
+    * @method reverseX
+    * @return {Vector} this
+    */
+    reverseX: function(){
+        this.x *= -1;
+        this.updateDirection();
+    },
+
+    /**
+    * Reverse the y of this vector.  Updates direction.
+    * @method reverseY
+    * @return {Vector} this
+    */
+    reverseY: function(){
+        this.y *= -1;
+        this.updateDirection();
+    },
+
+    /**
+    * Update direction based on current x and y changes.
+    * @method updateDirection
+    * @private
+    */
+    updateDirection: function(){
+        this.direction = this.getDirection(this.x, this.y);
+    },
+
+    /**
+    * Get the direction from x and y changes.
+    * @method getDirection
+    * @param {Number} x
+    * @param {Number} y
+    * @return {Number} 0 - 360
+    */
+    getDirection: function(x, y){
+        return geo.getDeg( Math.atan2( y, x ) );  
     }
 };
 
+/**
+* @module anim
+*/
 var anim = {
 
     /**
+    * @for anim
+    * @property RIGHT
+    * @type {Number}
+    * @default 0
+    * @final
+    */
+    RIGHT: 0,
+
+    /**
+    * @property DOWN
+    * @type {Number}
+    * @default 90
+    * @final
+    */
+    DOWN: 90,
+
+    /**
+    * @property LEFT
+    * @type {Number}
+    * @default 180
+    * @final
+    */
+    LEFT: 180,
+
+    /**
+    * @property UP
+    * @type {Number}
+    * @default 270
+    * @final
+    */
+    UP: 270,
+
+    /**
     * Set configuration properties.
+    * @method config
     * @param {Object} props
     */
     config: function(props){
@@ -97,7 +191,9 @@ var anim = {
     },
 
     /**
-    * framerate
+    * @property framerate
+    * @type {Number}
+    * @default 30
     */
     fps: 30,
 
@@ -121,8 +217,10 @@ var anim = {
 
     /**
     * Check if a value is between two others, inclusive.
+    * @method between
     * @param {Number} x the value to test
     * @param {Range} range
+    * @return {boolean}
     */
     between: function(x, range){
         return x >= range.a && x <= range.b;
@@ -130,6 +228,7 @@ var anim = {
 
     /**
     * Check if a range overlaps another range.
+    * @method rangesOverlap
     * @param {Range} range1
     * @param {Range} range2
     * @return {boolean}
@@ -138,20 +237,7 @@ var anim = {
         return this.between(range1.a, range2) || this.between(range1.b, range2);
     },
 
-    /**
-    * @class
-    * @param {Number} config.a
-    * @param {Number} config.b
-    */
-    Range: function(config){
-        var temp;
-        if(config.a > config.b){
-            temp = config.b;
-            config.b = config.a;
-            config.a = temp;
-        }
-        anim.extend(this, config);
-    },
+
 
     /**
     * Find intersection of two lines.
@@ -245,128 +331,7 @@ var anim = {
         this.context = canvas.getContext('2d');
     },
 
-    /**
-    * @class Actor
-    */
-    Actor: function(config){
 
-        var me = this;
-
-        // Set defaults.
-        anim.extend(config, {
-            width: 50,
-            height: 50,
-            x: 0,
-            y: 0,
-            speed: 0,
-            direction: 10,
-            rotation: 0,
-            spin: 0,
-            fillStyle: anim.getColor()
-        });
-
-        // Create getters/setters for each attribute.
-        anim.eachOwn(config, function(prop, value){
-            me[prop] = value;
-        });
-
-        switch(config.type){
-            case 'Rectangle':
-                this.draw = function(context){
-                    context.fillStyle = this.fillStyle;
-                    context.fillRect(0, 0, this.width, this.height);
-                }
-                break;
-            case 'Circle':
-                this.width = config.radius * 2;
-                this.height = this.width;
-                this.draw = function(context){
-                    context.beginPath();
-                    context.arc(0 + this.radius, 0 + this.radius, this.radius, 0, anim.getRad(360) );
-                    context.fillStyle = this.fillStyle;
-                    context.fill();
-                }
-                break;
-            case 'Triangle':
-                this.draw = function(context){
-                    context.beginPath();
-                    context.moveTo(0, 0);
-                    context.lineTo(0 + this.width, 0);
-                    context.lineTo(0 + this.width, 0 + this.height);
-                    context.lineTo(0, 0);
-                    context.fillStyle = this.fillStyle;
-                    context.fill();
-                }
-                break;
-            case 'Image':
-                this.image = new Image();
-                this.image.src = config.src;
-                // TODO This should be moved to the prototype once Actor types are split out.
-                this.draw = function(context){
-                    if(!this.image.width){
-                        return;
-                    }
-
-                    // Change the image frame, if it's time.
-                    this.sinceFrameChange++;
-                    if(this.sinceFrameChange === this.changeFrameEvery){
-                        this.nextFrame();
-                        this.sinceFrameChange = 0;
-                    }
-
-                    // Draw image
-                    context.drawImage(
-                        this.image,
-                        this.width * this.frame, 0, // source offset
-                        this.width, this.height,    // image dimensions
-                        0, 0,                       // position on canvas
-                        this.width, this.height     // scaling
-                    );
-                }
-                break;
-            default:
-                if(!this.draw){
-                    console.error('need a draw method');
-                }
-        }
-    },
-
-    /**
-    * @class Point
-    * @param {Number} config.x
-    * @param {Number} config.y
-    */
-    Point: function(config){
-        this.x = config.x;
-        this.y = config.y;
-    },
-
-    /**
-    * @class Line
-    * @param {Object} config either the slope elements (m, x, b) or two points (p1, p2)
-    */
-    Line: function(config){
-        var y, m, x, b, p1, p2;
-
-        if(config.hasOwnProperty('m')){
-            // y = config.m * config.x + config.b;
-            m = config.m;
-            b = config.b;
-        } else {
-            // determine line from two points
-            p1 = config.p1;
-            p2 = config.p2;
-            m = (p2.y - p1.y) / (p2.x - p1.x);
-
-            // find y-intercept
-            b = p1.y - (m * p1.x);
-        }
-
-        anim.extend(this, {
-            m: m,
-            b: b
-        });
-    },
 
     /**
     * @param {Object} config
@@ -589,7 +554,7 @@ var anim = {
             g = this.rand(0, 255),
             b = r + g > 400 ? 0 : r + g < 100 ? 255: this.rand(0, 255);
 
-        return 'rgba(' + r + ', ' + g + ', ' + b + ', 1)';
+        return 'rgba(' + r + ', ' + g + ', ' + b + ', 0.5)';
         // return 'rgba(' + this.rand(0, 255) + ', ' + this.rand(0, 255) + ', ' + this.rand(0, 255) + ', ' + this.rand(5, 10) / 10 + ')'
     },
 
@@ -611,87 +576,273 @@ var anim = {
     * Collisions during this frame
     * @type {Array}
     */
-    collisions: []
+    collisions: [],
+
+    /**
+    * @class Range
+    * @constructor
+    * @param {Number} config.a
+    * @param {Number} config.b
+    */
+    Range: function(config){
+        var temp;
+        if(config.a > config.b){
+            temp = config.b;
+            config.b = config.a;
+            config.a = temp;
+        }
+        anim.extend(this, config);
+    },
+
+    /**
+    * Anything on the canvas is an Actor.
+    * @class Actor
+    * @constructor
+    */
+    Actor: function(config){
+
+        var me = this;
+
+        // Set defaults.
+        anim.extend(config, {
+            width: 50,
+            height: 50,
+            x: 0,
+            y: 0,
+            speed: 0,
+            direction: 10,
+            rotation: 0,
+            spin: 0,
+            fillStyle: anim.getColor()
+        });
+
+        // Create getters/setters for each attribute.
+        anim.eachOwn(config, function(prop, value){
+            me[prop] = value;
+        });
+
+        // TODO Break these types into their own classes.
+        switch(config.type){
+            case 'Rectangle':
+                this.draw = function(context){
+                    context.fillStyle = this.fillStyle;
+                    context.fillRect(0, 0, this.width, this.height);
+                }
+                break;
+            case 'Circle':
+                this.width = config.radius * 2;
+                this.height = this.width;
+                this.draw = function(context){
+                    context.beginPath();
+                    context.arc(0 + this.radius, 0 + this.radius, this.radius, 0, anim.getRad(360) );
+                    context.fillStyle = this.fillStyle;
+                    context.fill();
+                }
+                break;
+            case 'Triangle':
+                this.draw = function(context){
+                    context.beginPath();
+                    context.moveTo(0, 0);
+                    context.lineTo(0 + this.width, 0);
+                    context.lineTo(0 + this.width, 0 + this.height);
+                    context.lineTo(0, 0);
+                    context.fillStyle = this.fillStyle;
+                    context.fill();
+                }
+                break;
+            case 'Image':
+                this.image = new Image();
+                this.image.src = config.src;
+                // TODO This should be moved to the prototype once Actor types are split out.
+                this.draw = function(context){
+                    if(!this.image.width){
+                        return;
+                    }
+
+                    // Change the image frame, if it's time.
+                    this.sinceFrameChange++;
+                    if(this.sinceFrameChange === this.changeFrameEvery){
+                        this.nextFrame();
+                        this.sinceFrameChange = 0;
+                    }
+
+                    // Draw image
+                    context.drawImage(
+                        this.image,
+                        this.width * this.frame, 0, // source offset
+                        this.width, this.height,    // image dimensions
+                        0, 0,                       // position on canvas
+                        this.width, this.height     // scaling
+                    );
+                }
+                break;
+            default:
+                if(!this.draw){
+                    console.error('need a draw method');
+                }
+        }
+
+        this.vector = new geo.Vector({
+            direction: this.direction,
+            magnitude: this.speed
+        });
+    },
+
+    /**
+    * @class Point
+    * @constructor
+    * @param {Number} config.x
+    * @param {Number} config.y
+    */
+    Point: function(config){
+        this.x = config.x;
+        this.y = config.y;
+    },
+
+    /**
+    * @class Line
+    * @constructor
+    * @param {Object} config either the slope elements (m, x, b) or two points (p1, p2)
+    */
+    Line: function(config){
+        var y, m, x, b, p1, p2;
+
+        if(config.hasOwnProperty('m')){
+            // y = config.m * config.x + config.b;
+            m = config.m;
+            b = config.b;
+        } else {
+            // determine line from two points
+            p1 = config.p1;
+            p2 = config.p2;
+            m = (p2.y - p1.y) / (p2.x - p1.x);
+
+            // find y-intercept
+            b = p1.y - (m * p1.x);
+        }
+
+        anim.extend(this, {
+            m: m,
+            b: b
+        });
+    }
 };
 
+/**
+* @for Actor
+*/
 anim.extend(anim.Actor.prototype, {
 
     /**
+    * @property frame
     * @type {Number}
+    * @default 0
     */
     frame: 0,
 
     /**
     * Advance this image's frame every x animation frames.
+    * @property changeFrameEvery
     * @type {Number}
+    * @default 0
     */
     changeFrameEvery: 0,
 
     /**
     * How many animation frames ago this image's frame was changed.
+    * @property sinceFrameChange
     * @type {Number}
+    * @default 0
     */
     sinceFrameChange: 0,
 
     /**
+    * @property lastPosition
     * @type {Point}
     */
     lastPosition: undefined,
 
     /**
     * Pixels moved per frame.
+    * @property speed
+    * @type {Number}
     */
     speed: 0,
 
     /**
     * How much the direction changes per frame.
+    * @property turnRate
     * @type {Number}
     */
     turnRate: 0,
 
     /**
-    * {Number} opacity between 0 and 1 (inclusive)
+    * opacity between 0 and 1 (inclusive)
+    * @property opacity
+    * @type {Number} 
+    * @default 1
     */
     opacity: 1,
 
     /**
-    * {String} fillStyle
+    * fillStyle
+    * @property fillStyle
+    * @type {String} 
     */
     fillStyle: undefined,
 
     /**
     * Flag used to note that this Actor was given instructions to move to a position.
+    * @property isMovingToPosition
+    * @type {Boolean}
     */
     isMovingToPosition: false,
 
     /**
     * x,y coords for position moving to
+    * @property movingTo
+    * @type {Object} x, y coords
     */
     movingTo: {},
 
     /**
     * Number of frames left for isMovingToPosition to complete.
+    * @property moveToFrames
+    * @type {Number}
     */
     moveToFrames: 0,
 
     /**
+    * Vector representing this Actor's speed/direction.
+    * @property vector
+    * @type {Vector}
+    */
+    vector: undefined,
+
+    /**
     * Callback run when this Actor is clicked on.
+    * @property onClick
+    * @type {function}
     */
     onClick: undefined,
 
     /**
-    * Callback run when this Actor collides with another Actor.
-    * @param {Actor} actor collided with
+    * Callback run when this Actor collides with another Actor, passed actor collided with
+    * @property onCollision
+    * @type {function}
     */
     onCollision: undefined,
 
     /**
     * Callback run on each frame.
+    * @property onFrame
+    * @type {function}
     */
     onFrame: undefined,
 
     /**
     * Move to the next Image frame.
+    * @method nextFrame
     * @return {Actor} this
     */
     nextFrame: function(){
@@ -701,6 +852,7 @@ anim.extend(anim.Actor.prototype, {
 
     /**
     * Move to the previous Image frame.
+    * @method prevFrame
     * @return {Actor} this
     */
     prevFrame: function(){
@@ -713,6 +865,7 @@ anim.extend(anim.Actor.prototype, {
 
     /**
     * Move a number of pixels.
+    * @method move
     * @param {Number} x
     * @param {Number} y
     * @return {Object} new position
@@ -728,6 +881,7 @@ anim.extend(anim.Actor.prototype, {
 
     /**
     * Skip ahead x pixels in the current direction
+    * @method skipAhead
     * @param {Number} pixels
     */
     skipAhead: function(pixels){
@@ -736,6 +890,7 @@ anim.extend(anim.Actor.prototype, {
 
     /**
     * Move the a new position.
+    * @method moveTo
     * @param {Number} x
     * @param {Number} y
     * @param {Number} [seconds] If provided, move to that position over the next seconds.
@@ -757,8 +912,8 @@ anim.extend(anim.Actor.prototype, {
 
         xChange = x - this.x;
         yChange = y - this.y;
-        degrees = 180 - anim.getDeg( Math.atan2(xChange, yChange) ),
-        this.direction = (270 + degrees)%360;
+        degrees = anim.getDeg( Math.atan2(yChange, xChange) ),
+        this.direction = degrees;
         distance = Math.sqrt( xChange * xChange + yChange * yChange);
 
         if(!seconds){
@@ -778,7 +933,11 @@ anim.extend(anim.Actor.prototype, {
         this.moveToFrames = frames;
     },
 
-    // get the next x and y based on speed and direction
+    /**
+    * get the next x and y based on speed and direction
+    * @method setNextPosition
+    * @param {context} context
+    */
     setNextPosition: function(context){
 
         var canvas = context.canvas,
@@ -803,39 +962,63 @@ anim.extend(anim.Actor.prototype, {
         this.rotate(this.spin);
 
         // update the direction
-        this.direction += this.turnRate;
+        // TODO account for turnRate
+        // this.direction += this.turnRate;
+        // this.vector.setDirection(this.direction);
 
         nextPoint = this.getNextPosition();
+
+
+        // TODO merge these border checks
+        // update later to account for adjusted center of Actors (not top left)
+        // bounce right wall
+        if(nextPoint.x > canvas.width - this.width){
+            nextPoint.x += -1 * ( 2 * (nextPoint.x - (canvas.width - this.width)) );
+            this.vector.reverseX();
+        }
+
+        // bounce left wall
+        if(nextPoint.x < 0){
+            nextPoint.x += 1 * (2 * (0 - nextPoint.x));
+            this.vector.reverseX();
+        }
+
+        // bounce bottom wall
+        if(nextPoint.y > canvas.height - this.height){
+            nextPoint.y += -1 * (2 * (nextPoint.y - (canvas.height - this.height)));
+            this.vector.reverseY();
+        }
+
+        // bounce top wall
+        if(nextPoint.y < 0){
+            nextPoint.y += 1 * (2 * (0 - nextPoint.y));
+            this.vector.reverseY();
+        }
+
+        // if(this.y + this.height > canvas.height || this.y < 0){
+        //     this.direction *= -1;
+        // }
+
         this.moveTo(nextPoint.x, nextPoint.y, 0);
-
-        // this.x += this.speed * Math.cos(anim.getRad(this.direction));
-        // this.y += this.speed * Math.sin(anim.getRad(this.direction));
-        if(this.x + this.width > canvas.width || this.x < 0){
-            this.direction = 180 - this.direction;
-        }
-
-        if(this.y + this.height > canvas.height || this.y < 0){
-            this.direction *= -1;
-        }
     },
 
     /**
     * Get next position based on current speed and direction.
-    * @param {Number} [frames] If provided, get the next position after this many frames.
+    * @method getNextPosition
+    * @param {Number} [frames=1] If provided, get the next position after this many frames.
     * @return {Point}
     */
     getNextPosition: function(frames){
-        var x, y, frames = frames || 1;
-        x = this.x + this.speed * frames * Math.cos(anim.getRad(this.direction));
-        y = this.y + this.speed * frames * Math.sin(anim.getRad(this.direction));
+        var frames = frames || 1;
         return new anim.Point({
-            x: x,
-            y: y
+            x: this.x + this.vector.x * frames,
+            y: this.y + this.vector.y * frames
         });
     },
 
     /**
     * Move the the next position based on current velocity.
+    * @method nextPosition
     * @param {Number} [frames] If provided, get the next position after this many frames.
     * @return {Actor}
     */
@@ -848,6 +1031,7 @@ anim.extend(anim.Actor.prototype, {
 
     /**
     * Set rotation.
+    * @method setRotation
     * @param {Number} degrees
     */
     setRotation: function(degrees){
@@ -856,6 +1040,7 @@ anim.extend(anim.Actor.prototype, {
 
     /**
     * Rotate.
+    * @method rotate
     * @param {Number} degrees
     */
     rotate: function(degrees){
@@ -865,16 +1050,19 @@ anim.extend(anim.Actor.prototype, {
 
     /**
     * Change direction a number of degrees.
+    * @method turn
     * @param {Number} degrees
     * @return {Actor}
     */
     turn: function(degrees){
         this.setDirection(this.direction + degrees);
+        this.vector.setDirection(this.vector.direction + degrees);
         return this;
     },
 
     /**
     * Set direction.  If < 0 || > 360, corrects it.
+    * @method setDirection
     * @param {Number} degrees
     */
     setDirection: function(degrees){
@@ -883,6 +1071,7 @@ anim.extend(anim.Actor.prototype, {
 
     /**
     * Change speed based on a rate of acceleration.
+    * @method accelerate
     * @param {Number} rate
     * @return {Number} new speed
     */
@@ -900,6 +1089,7 @@ anim.extend(anim.Actor.prototype, {
 
     /**
     * Accelerate to a specified speed.
+    * @method accelerateTo
     * @param {Number} speed Desired speed.
     * @param {Number} frames Frames to get to desired speed.
     */
@@ -910,6 +1100,7 @@ anim.extend(anim.Actor.prototype, {
 
     /**
     * Set the acceleration rate.
+    * @method setAcceleration
     * @param {Number} acceleration
     */
     setAcceleration: function(acceleration){
@@ -918,6 +1109,7 @@ anim.extend(anim.Actor.prototype, {
 
     /**
     * Get the 4 points that describe the space this Actor exists in.
+    * @method getBoundingBox
     * @return {Object}
     */
     getBoundingBox: function(){
@@ -931,7 +1123,9 @@ anim.extend(anim.Actor.prototype, {
 
     /**
     * Test if this Actor's bounding box overlaps another bounding box.
+    * @method overlaps
     * @param {Actor} actor
+    * @return {boolean}
     */
     overlaps: function(actor){
         var thisBox = this.getBoundingBox(),
@@ -957,10 +1151,22 @@ anim.extend(anim.Actor.prototype, {
     }
 });
 
+/**
+* @for Line
+*/
 anim.extend(anim.Line.prototype, {
+    /**
+    * @method getY
+    * @return {Number}
+    */
     getY: function(x){
         return this.m * x + this.b;
     },
+
+    /**
+    * @method getX
+    * @return {Number}
+    */
     getX: function(y){
         return (y - this.b) / this.m;
     }
@@ -977,48 +1183,85 @@ $(function(){
     });
 
 
-    actor = anim.addActor({
-        type: 'Image',
-        src: 'img/face.png',
-        changeFrameEvery: 10,
-        width: 100,
-        height: 100,
-        x: 200,
-        y: 0,
-        direction: 222,
-        speed: 3
-    });
+    function newActors(){
+        for(var i = 0; i < 100; i++){
+            actor = anim.addActor({
+                // type: 'Rectangle',
+                // width: 20,
+                // height: 20,
+                type: 'Circle',
+                radius: 10,
+                x: 0,
+                y: 0,
+                direction: (i + 1) * 3.6,
+                speed: i%12 + 1
+            });
+
+            // console.log(actor.id, actor.direction);
+        }
+    }
+
+    newActors();
+
+
+    // actor = anim.addActor({
+    //     // type: 'Image',
+    //     // src: 'img/face.png',
+    //     // changeFrameEvery: 10,
+    //     type: 'Rectangle',
+    //     width: 10,
+    //     height: 10,
+    //     x: 599,
+    //     y: 0,
+    //     direction: 30,
+    //     speed: 10
+    // });
 
     anim.play(-1, function(actors){
+        // for(var i = 0, max = actors.length; i < max; i++){
+        //     actors[i].turn(1);
+        // }
     });
 
     $('body').keydown(function(event){
+
+        function doForAll(collection, fn){
+            for(var i = 0, max = collection.length; i < max; i++){
+                fn(collection[i]);
+            }
+        }
+
+        var turnRate = 10;
+
         switch(event.which){
             // down
             case 40:
-                actor.speed--;
-                // actor.direction = 90;
-                // actor.spin++;
-
+                doForAll(anim.actors, function(a){
+                    a.vector.reverse();
+                });
                 break;
             // up
             case 38:
-                actor.speed++;
-                // actor.direction = 270;
-                // actor.spin--;
+                newActors();
                 break;
             // left
             case 37:
-                // actor.direction = 180;
-                // actor.spin++;
-                actor.turnRate--;
+                doForAll(anim.actors, function(a){
+                    a.turn(-turnRate);
+                });
                 break;
             // right
             case 39:
-                actor.turnRate++;
-                // actor.direction = 0;
-                // actor.spin--;
+                doForAll(anim.actors, function(a){
+                    a.turn(turnRate);
+                });
                 break;
         }
+
+
     });
+
+    // anim.onClick(function(Point){
+    //     debugger;
+    // });
 });
