@@ -38,12 +38,18 @@ var geo = {
     /**
     * @class Point
     * @constructor
+    * Accepts a config object or just x, y.
     * @param {Number} config.x
     * @param {Number} config.y
     */
     Point: function(config){
-        this.x = config.x;
-        this.y = config.y;
+        if(arguments.length > 1){
+            this.x = arguments[0];
+            this.y = arguments[1];
+        } else {
+            this.x = config.x;
+            this.y = config.y;
+        }
     },
 
     /**
@@ -54,10 +60,7 @@ var geo = {
     * @param {Point} config.point2
     */
     Line: function(config){
-        this.point1 = config.point1;
-        this.point2 = config.point2;
-        this.m = this.getSlope();
-        this.b = this.getB();
+        this.init(config);
     },
 
 
@@ -203,9 +206,36 @@ geo.Line.prototype.getIntersection = function(line) {
 
     y = this.getY(x);
 
-    return new geo.Point({x: x, y: y});
+    return new geo.Point(x, y);
 };
 
+/**
+* Change the points that define this Line
+* @param {Object} config
+* @param {Point} config.point1
+* @param {Point} config.point2
+* @private
+*/
+geo.Line.prototype.init = function(config) {
+    this.point1 = config.point1;
+    this.point2 = config.point2;
+    this.m = this.getSlope();
+    this.b = this.getB();
+};
+
+/**
+* Change one or both of the points for this line.
+* @param {Object} config
+* @param {Object} [config.point1]
+* @param {Object} [config.point2]
+*/
+geo.Line.prototype.changePoints = function(config) {
+    anim.extend(config, {
+        point1: this.point1,
+        point2: this.point2
+    });
+    this.init(config);
+};
 
 /**
 * @module anim
@@ -1332,8 +1362,8 @@ $(function(){
 
 
 var line1 = new geo.Line({
-    point1: new geo.Point({x: 1, y: 10}), 
-    point2: new geo.Point({x: 10, y: 10})
+    point1: new geo.Point(1, 10), 
+    point2: new geo.Point(10, 10)
 });
 var line2 = new geo.Line({
     point1: new geo.Point({x: 1, y: 1}), 
