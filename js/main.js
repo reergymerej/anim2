@@ -47,6 +47,21 @@ var geo = {
     },
 
     /**
+    * @class Line
+    * @constructor
+    * @param {Object} config
+    * @param {Point} config.point1
+    * @param {Point} config.point2
+    */
+    Line: function(config){
+        this.point1 = config.point1;
+        this.point2 = config.point2;
+        this.m = this.getSlope();
+        this.b = this.getB();
+    },
+
+
+    /**
     * @class Vector
     * @constructor
     * @param {Number} config.direction
@@ -142,6 +157,55 @@ geo.Vector.prototype = {
         return geo.getDeg( Math.atan2( y, x ) );  
     }
 };
+
+/**
+* @class Line
+*/
+/**
+* Find the slope of a line.
+* @return {Number}
+*/
+geo.Line.prototype.getSlope = function() {
+    return (this.point2.y - this.point1.y) / (this.point2.x - this.point1.x);
+};
+
+/**
+* Find y-intercept.
+* @return {Number}
+*/
+geo.Line.prototype.getB = function() {
+    return this.point1.y - this.m * this.point1.x;
+};
+
+/**
+* Get y for an x value.
+* @param {Number} x
+* @return {Number} y
+*/
+geo.Line.prototype.getY = function(x) {
+    // y = mx + b
+    return this.m * x + this.b;
+};
+
+/**
+* Find intersection with another line.
+* @param {Line} line
+* @return {Point} null if no intersection
+*/
+geo.Line.prototype.getIntersection = function(line) {
+    var x, y;
+
+    x = (this.b - line.b) / (line.m - this.m);
+
+    if(!isFinite(x)){
+        return null;
+    }
+
+    y = this.getY(x);
+
+    return new geo.Point({x: x, y: y});
+};
+
 
 /**
 * @module anim
@@ -1184,7 +1248,7 @@ $(function(){
 
 
     function newActors(){
-        for(var i = 0; i < 100; i++){
+        for(var i = 0; i < 1; i++){
             actor = anim.addActor({
                 // type: 'Rectangle',
                 // width: 20,
@@ -1265,3 +1329,14 @@ $(function(){
     //     debugger;
     // });
 });
+
+
+var line1 = new geo.Line({
+    point1: new geo.Point({x: 1, y: 10}), 
+    point2: new geo.Point({x: 10, y: 10})
+});
+var line2 = new geo.Line({
+    point1: new geo.Point({x: 1, y: 1}), 
+    point2: new geo.Point({x: 10, y: 10})
+});
+console.log( line1.getIntersection(line2) );
