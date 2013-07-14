@@ -63,6 +63,19 @@ var geo = {
         this.init(config);
     },
 
+    /**
+    * @class LineSegment
+    * @extends Line
+    * @constructor
+    * @param {Point} point1
+    * @param {Point} point2
+    */
+    LineSegment: function(point1, point2){
+        this.init({
+            point1: point1,
+            point2: point2
+        });
+    },
 
     /**
     * @class Vector
@@ -74,6 +87,23 @@ var geo = {
         this.magnitude = config.magnitude;
         this.direction = config.direction;
         this.setDirection(config.direction);
+    },
+
+    /**
+    * @class Range
+    * @constructor
+    * @param {Number} a
+    * @param {Number} b
+    */
+    Range: function(a, b){
+        var temp;
+        if(a > b){
+            temp = b;
+            b = a;
+            a = temp;
+        }
+        this.a = a;
+        this.b = b;
     }
 };
 
@@ -251,9 +281,36 @@ geo.Line.prototype.init = function(config) {
 * @param {Object} [config.point2]
 */
 geo.Line.prototype.changePoints = function(config) {
-    anim.extend(config, {
+    util.extend(config, {
         point1: this.point1,
         point2: this.point2
     });
     this.init(config);
+};
+
+geo.LineSegment.prototype = geo.Line.prototype;
+
+/**
+* Get a range (x or y) for this LineSegment.
+* @param {String} axis x or y
+* @return {Range}
+*/
+geo.LineSegment.prototype.getRange = function(axis) {
+    return new geo.Range(this.point1[axis], this.point2[axis]);
+};
+
+/**
+* Get the intersection for this LineSegment and another.
+* @param {LineSegment} lineseg
+* @return {Point}
+*/
+geo.LineSegment.prototype.getInter = function(lineseg) {
+    var intersection = this.getIntersection(lineSeg2);
+    
+    if( util.between(intersection.x, this.getRange('x')) 
+        && util.between(intersection.x, lineseg.getRange('x')) 
+        && util.between(intersection.y, this.getRange('y'))
+        && util.between(intersection.y, lineseg.getRange('y')) ){
+        return intersection;
+    }
 };

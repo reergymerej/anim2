@@ -1,7 +1,7 @@
 /**
 * @for Actor
 */
-anim.extend(anim.Actor.prototype, {
+util.extend(anim.Actor.prototype, {
 
     /**
     * @property frame
@@ -233,15 +233,15 @@ anim.extend(anim.Actor.prototype, {
         }
 
         // Mark each of the old positions.
-        for(var i = 0; i < this.oldPositions.length; i++){
-            anim.drawCircle({
-                point: this.oldPositions[i],
-                radius: 2
-            });
-            if(i > 0){
-                anim.drawLine( this.oldPositions[i - 1], this.oldPositions[i] );
-            }
-        }
+        // for(var i = 0; i < this.oldPositions.length; i++){
+        //     anim.drawCircle({
+        //         point: this.oldPositions[i],
+        //         radius: 2
+        //     });
+        //     if(i > 0){
+        //         anim.drawLine( this.oldPositions[i - 1], this.oldPositions[i] );
+        //     }
+        // }
 
         // update the rotation
         this.rotate(this.spin);
@@ -290,7 +290,7 @@ anim.extend(anim.Actor.prototype, {
     */
     getNextPosition: function(frames){
         var frames = frames || 1;
-        return new anim.Point({
+        return new geo.Point({
             x: this.x + this.vector.x * frames,
             y: this.y + this.vector.y * frames
         });

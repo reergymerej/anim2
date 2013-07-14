@@ -42,7 +42,10 @@ var anim = {
     * @param {Object} props
     */
     config: function(props){
-        this.extend(this, props, true);
+        util.extend(this, props, true);
+
+        // register the context
+        this.setCanvas(this.canvas);
     },
 
     /**
@@ -59,35 +62,6 @@ var anim = {
     fps: 30,
 
     /**
-    * Add the properties of one object to another.
-    * @method extend
-    * @param {object} obj1 destination object
-    * @param {object} obj2 object to add from
-    * @param {boolean} [overwrite=false]
-    */
-    extend: function(obj1, obj2, overwrite){
-        overwrite = !!overwrite;
-
-        anim.eachOwn(obj2, function(prop, val){
-            var hasProp = obj1.hasOwnProperty(prop);
-            if(!hasProp || hasProp === overwrite){
-                obj1[prop] = val;
-            }
-        });
-    },
-
-    /**
-    * Check if a value is between two others, inclusive.
-    * @method between
-    * @param {Number} x the value to test
-    * @param {Range} range
-    * @return {boolean}
-    */
-    between: function(x, range){
-        return x >= range.a && x <= range.b;
-    },
-
-    /**
     * Check if a range overlaps another range.
     * @method rangesOverlap
     * @param {Range} range1
@@ -95,7 +69,7 @@ var anim = {
     * @return {boolean}
     */
     rangesOverlap: function(range1, range2){
-        return this.between(range1.a, range2) || this.between(range1.b, range2);
+        return util.between(range1.a, range2) || util.between(range1.b, range2);
     },
 
     /**
@@ -146,18 +120,7 @@ var anim = {
         }
     },
 
-    /**
-    * Perform an operation on each "own" property in an object.
-    * @param {object} obj
-    * @param {function} operation passed the property and its value
-    */
-    eachOwn: function(obj, operation){
-        for(var i in obj){
-            if(obj.hasOwnProperty(i)){
-                operation.call(obj, i, obj[i]);
-            }
-        }
-    },
+    
 
     /**
     * Get a random integer between two numbers (inclusive).
@@ -202,7 +165,7 @@ var anim = {
     addActor: function(config){
         var actor;
 
-        this.extend(config, {
+        util.extend(config, {
             id: this.actorId++
         });
         actor = this.create('Actor', config);
@@ -246,9 +209,6 @@ var anim = {
             return;
         }
         
-        // register the context
-        this.setCanvas(this.canvas);
-
         // Add click listeners.
         me.clicks = [];
         $(this.canvas).click(function(event){
@@ -260,6 +220,45 @@ var anim = {
         this.updateActors = updateActors;
 
         this.animate();
+    },
+
+    /**
+    * Draw a grid on the canvas.
+    * @param {Number} interval
+    */
+    drawGrid: function(interval){
+        this.context.lineWidth = .25;
+        // vertical
+        for(var i = 0; i < this.canvas.width; i += interval){
+            this.context.beginPath();
+            if(i % (5 * interval) === 0){
+                this.context.strokeStyle = 'rgb(0, 0, 245)';
+            } else {
+                this.context.strokeStyle = 'rgb(0, 255, 245)';
+            }
+            this.context.moveTo(i, 0);
+            this.context.lineTo(i, this.canvas.height);
+            this.context.stroke();
+        }
+        // horizontal
+        for(var i = 0; i < this.canvas.height; i += interval){
+            this.context.beginPath();
+            if(i % (5 * interval) === 0){
+                this.context.strokeStyle = 'rgb(0, 0, 245)';
+            } else {
+                this.context.strokeStyle = 'rgb(0, 255, 245)';
+            }
+            this.context.moveTo(0, i);
+            this.context.lineTo(this.canvas.width, i);
+            this.context.stroke();
+        }
+    },
+
+    /**
+    * Clear the canvas.
+    */
+    clear: function(){
+        this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
     },
 
     /**
@@ -277,35 +276,11 @@ var anim = {
             actor;
 
         // clear the canvas
-        this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
+        this.clear();        
 
         // Draw grid, if needed.
         if(this.canvasGrid){
-            this.context.lineWidth = .25;
-            // vertical
-            for(var i = 0; i < this.canvas.width; i += this.canvasGrid){
-                this.context.beginPath();
-                if(i % (5 * this.canvasGrid) === 0){
-                    this.context.strokeStyle = 'rgb(0, 0, 245)';
-                } else {
-                    this.context.strokeStyle = 'rgb(0, 255, 245)';
-                }
-                this.context.moveTo(i, 0);
-                this.context.lineTo(i, this.canvas.height);
-                this.context.stroke();
-            }
-            // horizontal
-            for(var i = 0; i < this.canvas.height; i += this.canvasGrid){
-                this.context.beginPath();
-                if(i % (5 * this.canvasGrid) === 0){
-                    this.context.strokeStyle = 'rgb(0, 0, 245)';
-                } else {
-                    this.context.strokeStyle = 'rgb(0, 255, 245)';
-                }
-                this.context.moveTo(0, i);
-                this.context.lineTo(this.canvas.width, i);
-                this.context.stroke();
-            }
+            this.drawGrid(this.canvasGrid);
         }
 
         // Process the clicks.
@@ -378,7 +353,7 @@ var anim = {
         for(var j = 0; j < this.clicks.length; j++){
             x = this.clicks[j].offsetX;
             y = this.clicks[j].offsetY;
-            point = new this.Point({x: x, y: y});
+            point = new geo.Point({x: x, y: y});
 
             // Any actors clicked on?
             for(var i = 0, max = this.actors.length; i < max; i++){
@@ -504,11 +479,19 @@ var anim = {
 
     /**
     * Draw a line segment between two Points.
-    * @param {Point} p1
-    * @param {Point} p2
+    * @param {Point/LineSegment} p1 If a LineSegment is provided, there 
+    * is no need to specify points.
+    * @param {Point} [p2]
     */
     drawLine: function(p1, p2){
         var c = this.context;
+
+        // LineSegment provided instead of points
+        if(arguments.length === 1){
+            p2 = p1.point2;
+            p1 = p1.point1;
+        }
+
         c.beginPath();
         c.lineWidth = 1;
         c.strokeStyle = '#000000';
@@ -560,7 +543,7 @@ var anim = {
             config.b = config.a;
             config.a = temp;
         }
-        anim.extend(this, config);
+        util.extend(this, config);
     },
 
     /**
@@ -576,7 +559,7 @@ var anim = {
         var me = this;
 
         // Set defaults.
-        anim.extend(config, {
+        util.extend(config, {
             width: 50,
             height: 50,
             x: 0,
@@ -589,13 +572,20 @@ var anim = {
         });
 
         // Create getters/setters for each attribute.
-        anim.eachOwn(config, function(prop, value){
+        util.eachOwn(config, function(prop, value){
             me[prop] = value;
         });
 
         // TODO Break these types into their own classes.
         switch(config.type){
             
+            case 'Line':
+                this.line = new geo.Line({point1: this.point1, point2: this.point2});
+
+                this.draw = function(context){
+                    anim.drawLine(this.line);
+                }
+                break;
             case 'Circle':
                 this.radius = this.width /2;
                 this.height = this.width;
@@ -656,72 +646,13 @@ var anim = {
             direction: this.direction,
             magnitude: this.speed
         });
-    },
-
-    /**
-    * @class Point
-    * @constructor
-    * @param {Number} config.x
-    * @param {Number} config.y
-    */
-    Point: function(config){
-        this.x = config.x;
-        this.y = config.y;
-    },
-
-    /**
-    * @class Line
-    * @constructor
-    * @param {Object} config either the slope elements (m, x, b) or two points (p1, p2)
-    */
-    Line: function(config){
-        var y, m, x, b, p1, p2;
-
-        if(config.hasOwnProperty('m')){
-            // y = config.m * config.x + config.b;
-            m = config.m;
-            b = config.b;
-        } else {
-            // determine line from two points
-            p1 = config.p1;
-            p2 = config.p2;
-            m = (p2.y - p1.y) / (p2.x - p1.x);
-
-            // find y-intercept
-            b = p1.y - (m * p1.x);
-        }
-
-        anim.extend(this, {
-            m: m,
-            b: b
-        });
     }
 };
 
 
-
-/**
-* @for Line
-*/
-anim.extend(anim.Line.prototype, {
-    /**
-    * @method getY
-    * @return {Number}
-    */
-    getY: function(x){
-        return this.m * x + this.b;
-    },
-
-    /**
-    * @method getX
-    * @return {Number}
-    */
-    getX: function(y){
-        return (y - this.b) / this.m;
-    }
-});
-
 var actor;
+
+var line1, lineSeg, lineSeg2;
 
 $(function(){
     var canvas = $('#canvas')[0];
@@ -729,20 +660,20 @@ $(function(){
     anim.config({
         canvas: canvas,
         fps: 30,
-        boundingBoxes: true,
+        boundingBoxes: false,
         canvasGrid: 10
     });
 
-    actor = anim.addActor({
-        // type: 'Circle',
-        width: 50,
-        x: 100,
-        y: 100,
-        direction: 0,
-        speed: 0
-    });
+    // actor = anim.addActor({
+    //     // type: 'Circle',
+    //     width: 50,
+    //     x: 100,
+    //     y: 100,
+    //     direction: 0,
+    //     speed: 0
+    // });
 
-    actor.vector.setXY(-10, 10);
+    // actor.vector.setXY(-20, 20);
 
     // actor = anim.addActor({
     //     // type: 'Image',
@@ -757,47 +688,65 @@ $(function(){
     //     speed: 10
     // });
 
-    function playFrame(){
-        anim.play(0, function(actors){});
-    }
+
+    actor = anim.addActor({
+        type: 'Line',
+        point1: new geo.Point(33, 44),
+        point2: new geo.Point(77, 20)
+    });
+
+    // actor.vector.setXY(-20, 20);
+
+    var x = 0, y = 0;
+
+    anim.play(-1, function(actors){
+        actor.line.changePoints({point1: new geo.Point(x++, y++)});
+    });
 
     $('body').keydown(function(event){
-
-        function doForAll(collection, fn){
-            for(var i = 0, max = collection.length; i < max; i++){
-                fn(collection[i]);
-            }
-        }
 
         var turnRate = 10;
 
         switch(event.which){
             // down
             case 40:
-                doForAll(anim.actors, function(a){
+                util.doForAll(anim.actors, function(a){
                     a.vector.setXY(a.vector.x - 5, a.vector.y - 5);
                 });
                 break;
             // up
             case 38:
-                doForAll(anim.actors, function(a){
+                util.doForAll(anim.actors, function(a){
                     a.vector.setXY(a.vector.x + 5, a.vector.y + 5);
                 });
                 // newActors();
                 break;
             // left
             case 37:
-                doForAll(anim.actors, function(a){
+                util.doForAll(anim.actors, function(a){
                     a.turn(-turnRate);
                 });
                 break;
             // right
             case 39:
                 playFrame();
-                // doForAll(anim.actors, function(a){
+                // util.doForAll(anim.actors, function(a){
                 //     a.turn(turnRate);
                 // });
                 break;
         }
     });
+
+    // line1 = new geo.Line({
+    //     point1: new geo.Point(100, 100),
+    //     point2: new geo.Point(200, 200)
+    // });
+
+    // lineSeg = new geo.LineSegment( new geo.Point(100, 100), new geo.Point(200, 200) );
+    // lineSeg2 = new geo.LineSegment( new geo.Point(200, 100), new geo.Point(100, 200) );
+
+    // anim.drawGrid(10);
+    // anim.drawLine(lineSeg);
+    // anim.drawLine(lineSeg2);
+
 });
