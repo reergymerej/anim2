@@ -1,243 +1,4 @@
 /**
-* @module geo
-*/
-var geo = {
-
-    /**
-    * Get a hypotenuse length given opposite and adjacent lengths.
-    * @for geo
-    * @method getHypotenuse
-    * @param {Number} opposite
-    * @param {Number} adjacent
-    * @return {Number}
-    */
-    getHypotenuse: function(opposite, adjacent){
-        return Math.sqrt(opposite * opposite + adjacent * adjacent);
-    },
-
-    /**
-    * Get radians from degrees.
-    * @method getRad
-    * @param {Number} degrees
-    * @return {Number} radians
-    */
-    getRad: function(degrees){
-        return degrees * (Math.PI/180);
-    },
-
-    /**
-    * Get degrees from radians.
-    * @method getDeg
-    * @param {Number} radians
-    * @return {Number} degrees
-    */
-    getDeg: function(radians){
-        return radians * (180/Math.PI);
-    },
-
-    /**
-    * @class Point
-    * @constructor
-    * Accepts a config object or just x, y.
-    * @param {Number} config.x
-    * @param {Number} config.y
-    */
-    Point: function(config){
-        if(arguments.length > 1){
-            this.x = arguments[0];
-            this.y = arguments[1];
-        } else {
-            this.x = config.x;
-            this.y = config.y;
-        }
-    },
-
-    /**
-    * @class Line
-    * @constructor
-    * @param {Object} config
-    * @param {Point} config.point1
-    * @param {Point} config.point2
-    */
-    Line: function(config){
-        this.init(config);
-    },
-
-
-    /**
-    * @class Vector
-    * @constructor
-    * @param {Number} config.direction
-    * @param {Number} config.magnitude
-    */
-    Vector: function(config){
-        this.magnitude = config.magnitude;
-        this.direction = config.direction;
-        this.setDirection(config.direction);
-    }
-};
-
-/**
-* @class Vector
-*/
-geo.Vector.prototype = {
-
-    /**
-    * Set the direction, update the x and y.  Ensures direction < 360.
-    * @method setDirection
-    * @param {Number} direction
-    * @return {Vector} this
-    */
-    setDirection: function(direction){
-        var radians;
-        this.direction = direction%360;
-        radians = geo.getRad(this.direction);
-        this.x = this.magnitude * Math.cos(radians);
-        this.y = this.magnitude * Math.sin(radians);
-        return this;
-    },
-
-    /**
-    * Reverse this vector.
-    * @method reverse
-    * @return {Vector} this
-    */
-    reverse: function(){
-        this.setDirection(this.direction + 180);
-        return this;
-    },
-
-    /**
-    * Add another vector to this one.
-    * @method add
-    * @param {Vector} vector
-    * @return {Vector} this
-    */
-    add: function(vector){
-        this.x += vector.x;
-        this.y += vector.y;
-        this.updateDirection();
-        return this;
-    },
-
-    /**
-    * Reverse the x of this vector.  Updates direction.
-    * @method reverseX
-    * @return {Vector} this
-    */
-    reverseX: function(){
-        this.x *= -1;
-        this.updateDirection();
-    },
-
-    /**
-    * Reverse the y of this vector.  Updates direction.
-    * @method reverseY
-    * @return {Vector} this
-    */
-    reverseY: function(){
-        this.y *= -1;
-        this.updateDirection();
-    },
-
-    /**
-    * Update direction based on current x and y changes.
-    * @method updateDirection
-    * @private
-    */
-    updateDirection: function(){
-        this.direction = this.getDirection(this.x, this.y);
-    },
-
-    /**
-    * Get the direction from x and y changes.
-    * @method getDirection
-    * @param {Number} x
-    * @param {Number} y
-    * @return {Number} 0 - 360
-    */
-    getDirection: function(x, y){
-        return geo.getDeg( Math.atan2( y, x ) );  
-    }
-};
-
-/**
-* @class Line
-*/
-/**
-* Find the slope of a line.
-* @return {Number}
-*/
-geo.Line.prototype.getSlope = function() {
-    return (this.point2.y - this.point1.y) / (this.point2.x - this.point1.x);
-};
-
-/**
-* Find y-intercept.
-* @return {Number}
-*/
-geo.Line.prototype.getB = function() {
-    return this.point1.y - this.m * this.point1.x;
-};
-
-/**
-* Get y for an x value.
-* @param {Number} x
-* @return {Number} y
-*/
-geo.Line.prototype.getY = function(x) {
-    // y = mx + b
-    return this.m * x + this.b;
-};
-
-/**
-* Find intersection with another line.
-* @param {Line} line
-* @return {Point} null if no intersection
-*/
-geo.Line.prototype.getIntersection = function(line) {
-    var x, y;
-
-    x = (this.b - line.b) / (line.m - this.m);
-
-    if(!isFinite(x)){
-        return null;
-    }
-
-    y = this.getY(x);
-
-    return new geo.Point(x, y);
-};
-
-/**
-* Change the points that define this Line
-* @param {Object} config
-* @param {Point} config.point1
-* @param {Point} config.point2
-* @private
-*/
-geo.Line.prototype.init = function(config) {
-    this.point1 = config.point1;
-    this.point2 = config.point2;
-    this.m = this.getSlope();
-    this.b = this.getB();
-};
-
-/**
-* Change one or both of the points for this line.
-* @param {Object} config
-* @param {Object} [config.point1]
-* @param {Object} [config.point2]
-*/
-geo.Line.prototype.changePoints = function(config) {
-    anim.extend(config, {
-        point1: this.point1,
-        point2: this.point2
-    });
-    this.init(config);
-};
-
-/**
 * @module anim
 */
 var anim = {
@@ -285,6 +46,12 @@ var anim = {
     },
 
     /**
+    * Draw each actor's bounding box.
+    * @property [boundingBoxes=false]
+    */
+    boundingBoxes: false,
+
+    /**
     * @property framerate
     * @type {Number}
     * @default 30
@@ -330,8 +97,6 @@ var anim = {
     rangesOverlap: function(range1, range2){
         return this.between(range1.a, range2) || this.between(range1.b, range2);
     },
-
-
 
     /**
     * Find intersection of two lines.
@@ -410,6 +175,11 @@ var anim = {
     context: undefined,
 
     /**
+    * If defined, draw a grid on the canvas.
+    */
+    canvasGrid: undefined,
+
+    /**
     * All the Actors.
     */
     actors: [],
@@ -424,8 +194,6 @@ var anim = {
         this.canvas = canvas;
         this.context = canvas.getContext('2d');
     },
-
-
 
     /**
     * @param {Object} config
@@ -511,6 +279,35 @@ var anim = {
         // clear the canvas
         this.context.clearRect(0, 0, this.context.canvas.width, this.context.canvas.height);
 
+        // Draw grid, if needed.
+        if(this.canvasGrid){
+            this.context.lineWidth = .25;
+            // vertical
+            for(var i = 0; i < this.canvas.width; i += this.canvasGrid){
+                this.context.beginPath();
+                if(i % (5 * this.canvasGrid) === 0){
+                    this.context.strokeStyle = 'rgb(0, 0, 245)';
+                } else {
+                    this.context.strokeStyle = 'rgb(0, 255, 245)';
+                }
+                this.context.moveTo(i, 0);
+                this.context.lineTo(i, this.canvas.height);
+                this.context.stroke();
+            }
+            // horizontal
+            for(var i = 0; i < this.canvas.height; i += this.canvasGrid){
+                this.context.beginPath();
+                if(i % (5 * this.canvasGrid) === 0){
+                    this.context.strokeStyle = 'rgb(0, 0, 245)';
+                } else {
+                    this.context.strokeStyle = 'rgb(0, 255, 245)';
+                }
+                this.context.moveTo(0, i);
+                this.context.lineTo(this.canvas.width, i);
+                this.context.stroke();
+            }
+        }
+
         // Process the clicks.
         this.processClicks();
 
@@ -519,6 +316,7 @@ var anim = {
             this.updateActors(this.actors);
         }
 
+        // Handle onframe callbacks.
         for(var i = 0, max = this.actors.length; i < max; i++){
             actor = this.actors[i];
             if(actor && typeof actor.onFrame === 'function'){
@@ -533,6 +331,22 @@ var anim = {
             this.context.translate(actor.x, actor.y);
             this.context.rotate(anim.getRad(actor.rotation));
             actor.draw(this.context);
+
+            if(this.boundingBoxes){
+                actor.drawBoundingBox(this.context);
+                this.drawBox({
+                    context: this.context,
+                    fill: true,
+                    origin: (function(){
+                        var nextPoint = new geo.Point(actor.getNextPosition());
+                        nextPoint.x -= (actor.x + actor.width/2);
+                        nextPoint.y -= (actor.y + actor.height/2);
+                        return nextPoint;
+                    })(),
+                    width: actor.width
+                });
+            }
+
             this.context.restore();
             actor.setNextPosition(this.context);
         }
@@ -661,6 +475,65 @@ var anim = {
     },
 
     /**
+    * Draw a box.
+    * @param config.context
+    * @param config.origin starting point
+    * @param config.width
+    * @param [config.height] If blank, assume this is a square.
+    */
+    drawBox: function(config){
+        var ctx = config.context,
+            x = config.origin.x,
+            y = config.origin.y,
+            height = config.height || config.width;
+        
+        ctx.beginPath();
+        ctx.lineWidth = .25;
+        ctx.strokeStyle = 'rbg(0, 0, 0)';
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + config.width, y);
+        ctx.lineTo(x + config.width, y + height);
+        ctx.lineTo(x, y + height);
+        ctx.lineTo(x, y);
+        if(config.fill){
+            ctx.fillStyle = config.fillStyle || 'rgba( 255, 0, 0, 0.25)';
+            ctx.fill();
+        }
+        // ctx.stroke();
+    },
+
+    /**
+    * Draw a line segment between two Points.
+    * @param {Point} p1
+    * @param {Point} p2
+    */
+    drawLine: function(p1, p2){
+        var c = this.context;
+        c.beginPath();
+        c.lineWidth = 1;
+        c.strokeStyle = '#000000';
+        c.moveTo(p1.x, p1.y);
+        c.lineTo(p2.x, p2.y);
+        c.stroke();
+    },
+
+    /**
+    * Draw a solid circle, centered on a Point.
+    * @param {Point} config.point
+    * @param {Number} config.radius
+    * @param {String} [config.fillStyle]
+    */
+    drawCircle: function(config){
+        var c = this.context,
+            p = config.point;
+
+        c.beginPath();
+        c.arc(p.x, p.y, config.radius, 0, geo.getRad(360) );
+        c.fillStyle = config.fillStyle || 'rgba(0, 0, 0, 0.5)';
+        c.fill();
+    },
+
+    /**
     * Storage for unprocessed clicks
     * @type {Array}
     */
@@ -671,6 +544,8 @@ var anim = {
     * @type {Array}
     */
     collisions: [],
+
+
 
     /**
     * @class Range
@@ -692,6 +567,9 @@ var anim = {
     * Anything on the canvas is an Actor.
     * @class Actor
     * @constructor
+    * @param {Number} width
+    * @param {Number} [direction]
+    * @param {Number} [speed]
     */
     Actor: function(config){
 
@@ -717,14 +595,9 @@ var anim = {
 
         // TODO Break these types into their own classes.
         switch(config.type){
-            case 'Rectangle':
-                this.draw = function(context){
-                    context.fillStyle = this.fillStyle;
-                    context.fillRect(0, 0, this.width, this.height);
-                }
-                break;
+            
             case 'Circle':
-                this.width = config.radius * 2;
+                this.radius = this.width /2;
                 this.height = this.width;
                 this.draw = function(context){
                     context.beginPath();
@@ -770,9 +643,12 @@ var anim = {
                     );
                 }
                 break;
+            case 'Rectangle':
             default:
-                if(!this.draw){
-                    console.error('need a draw method');
+                this.draw = function(context){
+                    this.drawOrigin(context);
+                    context.fillStyle = this.fillStyle;
+                    context.fillRect(-this.width/2, -this.height/2, this.width, this.height);
                 }
         }
 
@@ -822,428 +698,7 @@ var anim = {
     }
 };
 
-/**
-* @for Actor
-*/
-anim.extend(anim.Actor.prototype, {
 
-    /**
-    * @property frame
-    * @type {Number}
-    * @default 0
-    */
-    frame: 0,
-
-    /**
-    * Advance this image's frame every x animation frames.
-    * @property changeFrameEvery
-    * @type {Number}
-    * @default 0
-    */
-    changeFrameEvery: 0,
-
-    /**
-    * How many animation frames ago this image's frame was changed.
-    * @property sinceFrameChange
-    * @type {Number}
-    * @default 0
-    */
-    sinceFrameChange: 0,
-
-    /**
-    * @property lastPosition
-    * @type {Point}
-    */
-    lastPosition: undefined,
-
-    /**
-    * Pixels moved per frame.
-    * @property speed
-    * @type {Number}
-    */
-    speed: 0,
-
-    /**
-    * How much the direction changes per frame.
-    * @property turnRate
-    * @type {Number}
-    */
-    turnRate: 0,
-
-    /**
-    * opacity between 0 and 1 (inclusive)
-    * @property opacity
-    * @type {Number} 
-    * @default 1
-    */
-    opacity: 1,
-
-    /**
-    * fillStyle
-    * @property fillStyle
-    * @type {String} 
-    */
-    fillStyle: undefined,
-
-    /**
-    * Flag used to note that this Actor was given instructions to move to a position.
-    * @property isMovingToPosition
-    * @type {Boolean}
-    */
-    isMovingToPosition: false,
-
-    /**
-    * x,y coords for position moving to
-    * @property movingTo
-    * @type {Object} x, y coords
-    */
-    movingTo: {},
-
-    /**
-    * Number of frames left for isMovingToPosition to complete.
-    * @property moveToFrames
-    * @type {Number}
-    */
-    moveToFrames: 0,
-
-    /**
-    * Vector representing this Actor's speed/direction.
-    * @property vector
-    * @type {Vector}
-    */
-    vector: undefined,
-
-    /**
-    * Callback run when this Actor is clicked on.
-    * @property onClick
-    * @type {function}
-    */
-    onClick: undefined,
-
-    /**
-    * Callback run when this Actor collides with another Actor, passed actor collided with
-    * @property onCollision
-    * @type {function}
-    */
-    onCollision: undefined,
-
-    /**
-    * Callback run on each frame.
-    * @property onFrame
-    * @type {function}
-    */
-    onFrame: undefined,
-
-    /**
-    * Move to the next Image frame.
-    * @method nextFrame
-    * @return {Actor} this
-    */
-    nextFrame: function(){
-        this.frame = (this.frame + 1) % (this.image.width / this.width);
-        return this;
-    },
-
-    /**
-    * Move to the previous Image frame.
-    * @method prevFrame
-    * @return {Actor} this
-    */
-    prevFrame: function(){
-        this.frame = this.frame - 1;
-        if(this.frame < 0){
-            this.frame = (this.image.width / this.width) - 1;
-        }
-        return this;
-    },
-
-    /**
-    * Move a number of pixels.
-    * @method move
-    * @param {Number} x
-    * @param {Number} y
-    * @return {Object} new position
-    */
-    move: function(x, y){
-        this.x += x;
-        this.y += y;
-        return {
-            x: this.x,
-            y: this.y
-        };
-    },
-
-    /**
-    * Skip ahead x pixels in the current direction
-    * @method skipAhead
-    * @param {Number} pixels
-    */
-    skipAhead: function(pixels){
-
-    },
-
-    /**
-    * Move the a new position.
-    * @method moveTo
-    * @param {Number} x
-    * @param {Number} y
-    * @param {Number} [seconds] If provided, move to that position over the next seconds.
-    * Otherwise, use the current speed.  If speed is 0, move instantly.
-    */
-    moveTo: function(x, y, seconds){
-        var xChange,
-            yChange,
-            distance,
-            degrees,
-            frames;
-
-        // move immediately
-        if(!seconds || !this.speed){
-            this.x = x;
-            this.y = y;
-            return;
-        }
-
-        xChange = x - this.x;
-        yChange = y - this.y;
-        degrees = anim.getDeg( Math.atan2(yChange, xChange) ),
-        this.direction = degrees;
-        distance = Math.sqrt( xChange * xChange + yChange * yChange);
-
-        if(!seconds){
-            // use the current speed
-            frames = distance / this.speed;
-        } else {
-            // calculate a new speed
-            frames = anim.fps * seconds;
-            this.speed = distance/frames;
-        }   
-        
-        this.isMovingToPosition = true;
-        this.movingTo = {
-            x: x,
-            y: y
-        };
-        this.moveToFrames = frames;
-    },
-
-    /**
-    * get the next x and y based on speed and direction
-    * @method setNextPosition
-    * @param {context} context
-    */
-    setNextPosition: function(context){
-
-        var canvas = context.canvas,
-            nextPoint;
-
-        // update the speed
-        this.accelerate(this.acceleration);
-
-        if(this.isMovingToPosition){
-            if(--this.moveToFrames <= 0){
-                this.x = this.movingTo.x;
-                this.y = this.movingTo.y;
-                this.isMovingToPosition = false;
-                this.speed = 0;
-            }
-        }
-
-        // this.lastPosition = anim.create('Point', {x: this.x, y: this.y});
-        this.lastPosition = new anim.Point({x: this.x, y: this.y});
-
-        // update the rotation
-        this.rotate(this.spin);
-
-        // update the direction
-        // TODO account for turnRate
-        // this.direction += this.turnRate;
-        // this.vector.setDirection(this.direction);
-
-        nextPoint = this.getNextPosition();
-
-
-        // TODO merge these border checks
-        // update later to account for adjusted center of Actors (not top left)
-        // bounce right wall
-        if(nextPoint.x > canvas.width - this.width){
-            nextPoint.x += -1 * ( 2 * (nextPoint.x - (canvas.width - this.width)) );
-            this.vector.reverseX();
-        }
-
-        // bounce left wall
-        if(nextPoint.x < 0){
-            nextPoint.x += 1 * (2 * (0 - nextPoint.x));
-            this.vector.reverseX();
-        }
-
-        // bounce bottom wall
-        if(nextPoint.y > canvas.height - this.height){
-            nextPoint.y += -1 * (2 * (nextPoint.y - (canvas.height - this.height)));
-            this.vector.reverseY();
-        }
-
-        // bounce top wall
-        if(nextPoint.y < 0){
-            nextPoint.y += 1 * (2 * (0 - nextPoint.y));
-            this.vector.reverseY();
-        }
-
-        // if(this.y + this.height > canvas.height || this.y < 0){
-        //     this.direction *= -1;
-        // }
-
-        this.moveTo(nextPoint.x, nextPoint.y, 0);
-    },
-
-    /**
-    * Get next position based on current speed and direction.
-    * @method getNextPosition
-    * @param {Number} [frames=1] If provided, get the next position after this many frames.
-    * @return {Point}
-    */
-    getNextPosition: function(frames){
-        var frames = frames || 1;
-        return new anim.Point({
-            x: this.x + this.vector.x * frames,
-            y: this.y + this.vector.y * frames
-        });
-    },
-
-    /**
-    * Move the the next position based on current velocity.
-    * @method nextPosition
-    * @param {Number} [frames] If provided, get the next position after this many frames.
-    * @return {Actor}
-    */
-    nextPosition: function(frames){
-        var position = this.getNextPosition(frames);
-        this.x = position.x;
-        this.y = position.y;
-        return this;
-    },
-
-    /**
-    * Set rotation.
-    * @method setRotation
-    * @param {Number} degrees
-    */
-    setRotation: function(degrees){
-        this.rotation = degrees;
-    },
-
-    /**
-    * Rotate.
-    * @method rotate
-    * @param {Number} degrees
-    */
-    rotate: function(degrees){
-        degrees = degrees || 0;
-        this.rotation += degrees;
-    },
-
-    /**
-    * Change direction a number of degrees.
-    * @method turn
-    * @param {Number} degrees
-    * @return {Actor}
-    */
-    turn: function(degrees){
-        this.setDirection(this.direction + degrees);
-        this.vector.setDirection(this.vector.direction + degrees);
-        return this;
-    },
-
-    /**
-    * Set direction.  If < 0 || > 360, corrects it.
-    * @method setDirection
-    * @param {Number} degrees
-    */
-    setDirection: function(degrees){
-        this.direction = degrees%360;
-    },
-
-    /**
-    * Change speed based on a rate of acceleration.
-    * @method accelerate
-    * @param {Number} rate
-    * @return {Number} new speed
-    */
-    accelerate: function(rate){
-        rate = rate || 0;
-        this.speed += rate;
-
-        // If we're accelerating to a specific speed, see if we're there.
-        if(this.isAccelerating && this.speed >= this.isAccelerating){
-            this.setAcceleration(0);
-            delete this.isAccelerating;
-        }
-        return this.speed;
-    },
-
-    /**
-    * Accelerate to a specified speed.
-    * @method accelerateTo
-    * @param {Number} speed Desired speed.
-    * @param {Number} frames Frames to get to desired speed.
-    */
-    accelerateTo: function(speed, frames){
-        this.isAccelerating = speed;
-        this.setAcceleration(speed / frames);
-    },
-
-    /**
-    * Set the acceleration rate.
-    * @method setAcceleration
-    * @param {Number} acceleration
-    */
-    setAcceleration: function(acceleration){
-        this.acceleration = acceleration;
-    },
-
-    /**
-    * Get the 4 points that describe the space this Actor exists in.
-    * @method getBoundingBox
-    * @return {Object}
-    */
-    getBoundingBox: function(){
-        return {
-            x1: this.x,
-            x2: this.x + this.width,
-            y1: this.y,
-            y2: this.y + this.height
-        };
-    },
-
-    /**
-    * Test if this Actor's bounding box overlaps another bounding box.
-    * @method overlaps
-    * @param {Actor} actor
-    * @return {boolean}
-    */
-    overlaps: function(actor){
-        var thisBox = this.getBoundingBox(),
-            otherBox = actor.getBoundingBox(),
-            range1,
-            range2;
-
-        // check x axis
-        range1 = anim.create('Range', {a: thisBox.x1, b:thisBox.x2});
-        range2 = anim.create('Range', {a: otherBox.x1, b:otherBox.x2});
-        if(!anim.rangesOverlap(range1, range2)){
-            return false;
-        }
-
-        // check y axis
-        range1 = anim.create('Range', {a: thisBox.y1, b:thisBox.y2});
-        range2 = anim.create('Range', {a: otherBox.y1, b:otherBox.y2});
-        if(!anim.rangesOverlap(range1, range2)){
-            return false;
-        }
-
-        return true;
-    }
-});
 
 /**
 * @for Line
@@ -1273,30 +728,21 @@ $(function(){
 
     anim.config({
         canvas: canvas,
-        fps: 100
+        fps: 30,
+        boundingBoxes: true,
+        canvasGrid: 10
     });
 
+    actor = anim.addActor({
+        // type: 'Circle',
+        width: 50,
+        x: 100,
+        y: 100,
+        direction: 0,
+        speed: 0
+    });
 
-    function newActors(){
-        for(var i = 0; i < 1; i++){
-            actor = anim.addActor({
-                // type: 'Rectangle',
-                // width: 20,
-                // height: 20,
-                type: 'Circle',
-                radius: 10,
-                x: 0,
-                y: 0,
-                direction: (i + 1) * 3.6,
-                speed: i%12 + 1
-            });
-
-            // console.log(actor.id, actor.direction);
-        }
-    }
-
-    newActors();
-
+    actor.vector.setXY(-10, 10);
 
     // actor = anim.addActor({
     //     // type: 'Image',
@@ -1311,11 +757,9 @@ $(function(){
     //     speed: 10
     // });
 
-    anim.play(-1, function(actors){
-        // for(var i = 0, max = actors.length; i < max; i++){
-        //     actors[i].turn(1);
-        // }
-    });
+    function playFrame(){
+        anim.play(0, function(actors){});
+    }
 
     $('body').keydown(function(event){
 
@@ -1331,12 +775,15 @@ $(function(){
             // down
             case 40:
                 doForAll(anim.actors, function(a){
-                    a.vector.reverse();
+                    a.vector.setXY(a.vector.x - 5, a.vector.y - 5);
                 });
                 break;
             // up
             case 38:
-                newActors();
+                doForAll(anim.actors, function(a){
+                    a.vector.setXY(a.vector.x + 5, a.vector.y + 5);
+                });
+                // newActors();
                 break;
             // left
             case 37:
@@ -1346,27 +793,11 @@ $(function(){
                 break;
             // right
             case 39:
-                doForAll(anim.actors, function(a){
-                    a.turn(turnRate);
-                });
+                playFrame();
+                // doForAll(anim.actors, function(a){
+                //     a.turn(turnRate);
+                // });
                 break;
         }
-
-
     });
-
-    // anim.onClick(function(Point){
-    //     debugger;
-    // });
 });
-
-
-var line1 = new geo.Line({
-    point1: new geo.Point(1, 10), 
-    point2: new geo.Point(10, 10)
-});
-var line2 = new geo.Line({
-    point1: new geo.Point({x: 1, y: 1}), 
-    point2: new geo.Point({x: 10, y: 10})
-});
-console.log( line1.getIntersection(line2) );
