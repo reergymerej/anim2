@@ -304,7 +304,7 @@ geo.LineSegment.prototype.getRange = function(axis) {
 * @param {LineSegment} lineseg
 * @return {Point}
 */
-geo.LineSegment.prototype.getInter = function(lineseg) {
+geo.LineSegment.prototype.getSegmentIntersection = function(lineseg) {
     var intersection = this.getIntersection(lineSeg2);
     
     if( util.between(intersection.x, this.getRange('x')) 

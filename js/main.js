@@ -339,8 +339,6 @@ var anim = {
                 // requestAnimationFrame(this.animate.bind(this));
                 requestAnimationFrame(me.animate.bind(me));
             }, 1000/me.fps );
-        } else {
-            console.log('done animating');
         }
     },
 
@@ -689,19 +687,8 @@ $(function(){
     // });
 
 
-    actor = anim.addActor({
-        type: 'Line',
-        point1: new geo.Point(33, 44),
-        point2: new geo.Point(77, 20)
-    });
-
-    // actor.vector.setXY(-20, 20);
-
-    var x = 0, y = 0;
-
-    anim.play(-1, function(actors){
-        actor.line.changePoints({point1: new geo.Point(x++, y++)});
-    });
+    actor = new geo.LineSegment( new geo.Point(0, 0), new geo.Point(10, 10) );
+    lineSeg2 = new geo.LineSegment( new geo.Point(200, 100), new geo.Point(100, 200) ); 
 
     $('body').keydown(function(event){
 
@@ -734,6 +721,26 @@ $(function(){
                 //     a.turn(turnRate);
                 // });
                 break;
+        }
+    });
+
+    $('canvas').mousemove(function(event){
+        var x = event.offsetX,
+            y = event.offsetY,
+            intersection;
+            
+        actor.changePoints({point2: new geo.Point(x, y)});
+
+        anim.clear();
+        anim.drawGrid(10);
+        anim.drawLine(lineSeg2);
+        anim.drawLine(actor);
+        intersection = actor.getSegmentIntersection(lineSeg2);
+        if(intersection){
+            anim.drawCircle({
+                point: intersection,
+                radius: 20
+            });
         }
     });
 
