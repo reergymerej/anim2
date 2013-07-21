@@ -399,7 +399,13 @@ var anim = {
                         continue;
                     }
                     
-                    if(actor.overlaps(otherActor)){
+                    // if(actor.overlaps(otherActor)){
+                    //     collisionsToProcess.push({
+                    //         actor: actor,
+                    //         collidedWith: otherActor
+                    //     });
+                    // }
+                    if(actor.intersects(otherActor)){
                         collisionsToProcess.push({
                             actor: actor,
                             collidedWith: otherActor
@@ -741,30 +747,40 @@ $(function(){
         //     });
         // }
 
-        actor.position = new geo.Point(x, y);
+        // target.moveTo(x, y, 0);
     });
 
     target = anim.addActor({
         type: 'Rectangle',
         width: 100,
         height: 100,
-        position: new geo.Point(500, 500)
+        position: new geo.Point(300, 300)
     });
 
-    actor = anim.addActor({
-        type: 'Rectangle',
-        fillStyle: 'rgba(200, 0, 255, .5)',
-        width: 150,
-        height: 150,
-        position: new geo.Point(100, 100)
-    });
 
-    anim.play(-1, function(){
+    function onColl(collidedWith){
+        collidedWith.rotate(this.vector.magnitude/2);
+    }
+
+    for(var i = 0; i < 6; i++){
+        actor = anim.addActor({
+            type: 'Rectangle',
+            // fillStyle: 'rgba(200, 0, 255, .5)',
+            width: 50,
+            height: 50,
+            position: new geo.Point(0, 0),
+            x: 0,
+            y: 0,
+            direction: (i + 1) * 25,
+            speed: 5 + i,
+            onCollision: onColl
+        });
+    }
+
+
+    anim.play(-1/*, function(){
         if(actor.intersects(target)){
             console.log('woop!');
         }
-    });
-
+    }*/);
 });
-
-var box1, box2, range1, range2;

@@ -177,6 +177,10 @@ util.extend(anim.Actor.prototype, {
         if(!seconds || !this.speed){
             this.x = x;
             this.y = y;
+            // TODO update actors to use positions
+            if(this.position){
+                this.position = new geo.Point(x, y);
+            }
             return;
         }
 
@@ -290,10 +294,19 @@ util.extend(anim.Actor.prototype, {
     */
     getNextPosition: function(frames){
         var frames = frames || 1;
-        return new geo.Point({
-            x: this.x + this.vector.x * frames,
-            y: this.y + this.vector.y * frames
-        });
+
+        // TODO remove the x,y usage after Actors are all use position
+        if(this.position){
+            return new geo.Point(
+                this.position.x + this.vector.x * frames,
+                this.position.y + this.vector.y * frames
+            );
+        } else {
+            return new geo.Point({
+                x: this.x + this.vector.x * frames,
+                y: this.y + this.vector.y * frames
+            });
+        }
     },
 
     /**
