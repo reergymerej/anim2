@@ -401,12 +401,16 @@ util.extend(anim.Actor.prototype, {
     * @return {Object}
     */
     getBoundingBox: function(){
-        return {
-            x1: this.x,
-            x2: this.x + this.width,
-            y1: this.y,
-            y2: this.y + this.height
-        };
+        var x = this.position.x - this.width/2,
+            y = this.position.y - this.height/2;
+
+        return new geo.Box(new geo.Point(x, y), this.width, this.height);
+        // return {
+        //     tl: this.x,
+        //     tr: this.x + this.width,
+        //     bl: this.y,
+        //     br: this.y + this.height
+        // };
     },
 
     /**
@@ -421,21 +425,17 @@ util.extend(anim.Actor.prototype, {
             range1,
             range2;
 
-        // check x axis
-        range1 = anim.create('Range', {a: thisBox.x1, b:thisBox.x2});
-        range2 = anim.create('Range', {a: otherBox.x1, b:otherBox.x2});
-        if(!anim.rangesOverlap(range1, range2)){
-            return false;
-        }
+        return;
+    },
 
-        // check y axis
-        range1 = anim.create('Range', {a: thisBox.y1, b:thisBox.y2});
-        range2 = anim.create('Range', {a: otherBox.y1, b:otherBox.y2});
-        if(!anim.rangesOverlap(range1, range2)){
-            return false;
-        }
-
-        return true;
+    /**
+    * Test if this Actor's bounding box overlaps another Actor's bounding box.
+    * @method intersects
+    * @param {Actor} actor
+    * @return {boolean}
+    */
+    intersects: function(actor){
+        return this.getBoundingBox().intersects(actor.getBoundingBox());
     },
 
     /**

@@ -104,8 +104,41 @@ var geo = {
         }
         this.a = a;
         this.b = b;
+    },
+
+    /**
+    * @class Box
+    * @constructor
+    * @param {Point} tl The top left position.
+    * @param {Number} width
+    * @param {Number} height
+    */
+    Box: function(tl, width, height){
+        // this.tl = tl;
+        // this.tr = new geo.Point(tl.x + width, tl.y);
+        // this.bl = new geo.Point(tl.x, tl.y + height);
+        // this.br = new geo.Point(tl.x + width, tl.y + height);
+        this.xRange = new geo.Range(tl.x, tl.x + width);
+        this.yRange = new geo.Range(tl.y, tl.y + height);
     }
 };
+
+
+/**
+* @class Box
+*/
+geo.Box.prototype = {
+    /**
+    * Test if this Box intersects with another Box.
+    * @param {Box} box
+    * @return {Booolean}
+    */
+    intersects: function(box){
+        return this.xRange.intersects(box.yRange)
+            && this.yRange.intersects(box.xRange);
+    }
+};
+
 
 /**
 * @class Vector
@@ -313,4 +346,16 @@ geo.LineSegment.prototype.getSegmentIntersection = function(lineseg) {
         && util.between(intersection.y, lineseg.getRange('y')) ){
         return intersection;
     }
+};
+
+/**
+* Find out if this Range intersects with another.
+* @param {Range} range
+* @return {Boolean}
+*/
+geo.Range.prototype.intersects = function(range){
+    return (this.a >= range.a && this.a <= range.b)
+        || (this.b >= range.a && this.b <= range.b)
+        || (range.a >= this.a && range.a <= this.b)
+        || (range.b >= this.a && range.b <= this.b);
 };

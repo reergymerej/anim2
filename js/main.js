@@ -303,7 +303,13 @@ var anim = {
         for(var i = 0, max = this.actors.length; i < max; i++){
             actor = this.actors[i];
             this.context.save();
-            this.context.translate(actor.x, actor.y);
+
+            // TODO Remove the x/y usage after all Actors are using position.
+            if(actor.position){
+                this.context.translate(actor.position.x, actor.position.y);
+            } else {
+                this.context.translate(actor.x, actor.y);
+            }
             this.context.rotate(anim.getRad(actor.rotation));
             actor.draw(this.context);
 
@@ -554,7 +560,8 @@ var anim = {
     */
     Actor: function(config){
 
-        var me = this;
+        var me = this,
+            position = config.position || new geo.Point(0, 0);
 
         // Set defaults.
         util.extend(config, {
@@ -562,6 +569,7 @@ var anim = {
             height: 50,
             x: 0,
             y: 0,
+            position: position,
             speed: 0,
             direction: 10,
             rotation: 0,
@@ -633,6 +641,7 @@ var anim = {
                 break;
             case 'Rectangle':
             default:
+
                 this.draw = function(context){
                     this.drawOrigin(context);
                     context.fillStyle = this.fillStyle;
@@ -648,7 +657,7 @@ var anim = {
 };
 
 
-var actor;
+var actor, target;
 
 var line1, lineSeg, lineSeg2;
 
@@ -663,17 +672,6 @@ $(function(){
     });
 
     // actor = anim.addActor({
-    //     // type: 'Circle',
-    //     width: 50,
-    //     x: 100,
-    //     y: 100,
-    //     direction: 0,
-    //     speed: 0
-    // });
-
-    // actor.vector.setXY(-20, 20);
-
-    // actor = anim.addActor({
     //     // type: 'Image',
     //     // src: 'img/face.png',
     //     // changeFrameEvery: 10,
@@ -686,74 +684,87 @@ $(function(){
     //     speed: 10
     // });
 
+    // $('body').keydown(function(event){
 
-    actor = new geo.LineSegment( new geo.Point(0, 0), new geo.Point(10, 10) );
-    lineSeg2 = new geo.LineSegment( new geo.Point(200, 100), new geo.Point(100, 200) ); 
+    //     var turnRate = 10;
 
-    $('body').keydown(function(event){
+    //     switch(event.which){
+    //         // down
+    //         case 40:
+    //             util.doForAll(anim.actors, function(a){
+    //                 a.vector.setXY(a.vector.x - 5, a.vector.y - 5);
+    //             });
+    //             break;
+    //         // up
+    //         case 38:
+    //             util.doForAll(anim.actors, function(a){
+    //                 a.vector.setXY(a.vector.x + 5, a.vector.y + 5);
+    //             });
+    //             // newActors();
+    //             break;
+    //         // left
+    //         case 37:
+    //             util.doForAll(anim.actors, function(a){
+    //                 a.turn(-turnRate);
+    //             });
+    //             break;
+    //         // right
+    //         case 39:
+    //             playFrame();
+    //             // util.doForAll(anim.actors, function(a){
+    //             //     a.turn(turnRate);
+    //             // });
+    //             break;
+    //     }
+    // });
 
-        var turnRate = 10;
-
-        switch(event.which){
-            // down
-            case 40:
-                util.doForAll(anim.actors, function(a){
-                    a.vector.setXY(a.vector.x - 5, a.vector.y - 5);
-                });
-                break;
-            // up
-            case 38:
-                util.doForAll(anim.actors, function(a){
-                    a.vector.setXY(a.vector.x + 5, a.vector.y + 5);
-                });
-                // newActors();
-                break;
-            // left
-            case 37:
-                util.doForAll(anim.actors, function(a){
-                    a.turn(-turnRate);
-                });
-                break;
-            // right
-            case 39:
-                playFrame();
-                // util.doForAll(anim.actors, function(a){
-                //     a.turn(turnRate);
-                // });
-                break;
-        }
-    });
+    // Intersection test.
+    // actor = new geo.LineSegment( new geo.Point(0, 0), new geo.Point(10, 10) );
+    // lineSeg2 = new geo.LineSegment( new geo.Point(200, 100), new geo.Point(100, 200) ); 
 
     $('canvas').mousemove(function(event){
         var x = event.offsetX,
             y = event.offsetY,
             intersection;
             
-        actor.changePoints({point2: new geo.Point(x, y)});
+        // actor.changePoints({point2: new geo.Point(x, y)});
 
-        anim.clear();
-        anim.drawGrid(10);
-        anim.drawLine(lineSeg2);
-        anim.drawLine(actor);
-        intersection = actor.getSegmentIntersection(lineSeg2);
-        if(intersection){
-            anim.drawCircle({
-                point: intersection,
-                radius: 20
-            });
+        // anim.clear();
+        // anim.drawGrid(10);
+        // anim.drawLine(lineSeg2);
+        // anim.drawLine(actor);
+        // intersection = actor.getSegmentIntersection(lineSeg2);
+        // if(intersection){
+        //     anim.drawCircle({
+        //         point: intersection,
+        //         radius: 20
+        //     });
+        // }
+
+        actor.position = new geo.Point(x, y);
+    });
+
+    target = anim.addActor({
+        type: 'Rectangle',
+        width: 100,
+        height: 100,
+        position: new geo.Point(500, 500)
+    });
+
+    actor = anim.addActor({
+        type: 'Rectangle',
+        fillStyle: 'rgba(200, 0, 255, .5)',
+        width: 150,
+        height: 150,
+        position: new geo.Point(100, 100)
+    });
+
+    anim.play(-1, function(){
+        if(actor.intersects(target)){
+            console.log('woop!');
         }
     });
 
-    // line1 = new geo.Line({
-    //     point1: new geo.Point(100, 100),
-    //     point2: new geo.Point(200, 200)
-    // });
-
-    // lineSeg = new geo.LineSegment( new geo.Point(100, 100), new geo.Point(200, 200) );
-    // lineSeg2 = new geo.LineSegment( new geo.Point(200, 100), new geo.Point(100, 200) );
-
-    // anim.drawGrid(10);
-    // anim.drawLine(lineSeg);
-    // anim.drawLine(lineSeg2);
-
 });
+
+var box1, box2, range1, range2;
